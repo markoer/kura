@@ -69,10 +69,10 @@
         <module>org.eclipse.kura.protocol.modbus.test</module>
         <module>org.eclipse.kura.stress</module>
         <module>emulator</module>
-        <module>org.eclipse.kura.core.test</module>
         <module>org.eclipse.kura.windows.command</module>
         <module>org.eclipse.kura.windows.clock</module>
         <module>examples</module>
+        <module>test</module>
     </modules>
 
     <properties>
@@ -117,7 +117,7 @@
                 <repository>
                     <id>p2-repo-equinox_3.8.1</id>
                     <layout>p2</layout>
-                    <url>file:///${kura.basedir}/target-definition/equinox_3.8.1/repository/</url>
+					<url>file:////${kura.basedir}/target-definition/equinox_3.8.1/repository/</url>
                 </repository>
             </repositories>
         </profile>
