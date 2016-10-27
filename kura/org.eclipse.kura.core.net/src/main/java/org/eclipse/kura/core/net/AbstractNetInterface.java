@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.kura.KuraException;
 import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.net.NetInterface;
 import org.eclipse.kura.net.NetInterfaceAddress;
@@ -207,8 +208,10 @@ public abstract class AbstractNetInterface<T extends NetInterfaceAddress> implem
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("name=").append(this.name);
-        if (this.hardwareAddress != null && this.hardwareAddress.length == 6) {
+        try {
             sb.append(" :: hardwareAddress=").append(NetworkUtil.macToString(this.hardwareAddress));
+        } catch (KuraException e) {
+            // Hardware address is invalid, do not append it
         }
         sb.append(" :: loopback=").append(this.loopback).append(" :: pointToPoint=").append(this.pointToPoint)
                 .append(" :: virtual=").append(this.virtual).append(" :: supportsMulticast=")
@@ -220,7 +223,7 @@ public abstract class AbstractNetInterface<T extends NetInterfaceAddress> implem
                 .append(" :: firmwareVersion=").append(this.firmwareVersion).append(" :: state=").append(this.state)
                 .append(" :: autoConnect=").append(this.autoConnect);
         if (this.interfaceAddresses != null && this.interfaceAddresses.size() > 0) {
-            sb.append(" :: InterfaceAddress=");
+            sb.append(" :: InterfaceAddress="); // TODO: should this be "interfaceAddress"?
             for (T interfaceAddress : this.interfaceAddresses) {
                 sb.append(interfaceAddress).append(" ");
             }
