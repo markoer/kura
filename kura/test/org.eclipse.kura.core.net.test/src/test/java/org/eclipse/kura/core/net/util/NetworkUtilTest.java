@@ -5,8 +5,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import org.eclipse.kura.KuraException;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 
+@FixMethodOrder
 public class NetworkUtilTest {
 
     // Unit tests for method: calculateNetwork
