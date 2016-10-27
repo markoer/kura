@@ -324,9 +324,18 @@ public class NetworkUtilTest {
     }
 
     @Test
-    public void testGetNetmaskShortFormInvalidSubnet() {
+    public void testGetNetmaskShortFormInvalidSubnet1() {
         try {
             NetworkUtil.getNetmaskShortForm("256.255.255.0");
+            fail("invalid subnet");
+        } catch (KuraException e) {
+        }
+    }
+
+    @Test
+    public void testGetNetmaskShortFormInvalidSubnet2() {
+        try {
+            NetworkUtil.getNetmaskShortForm("255.255.127.0");
             fail("invalid subnet");
         } catch (KuraException e) {
         }
@@ -478,9 +487,18 @@ public class NetworkUtilTest {
     }
 
     @Test
-    public void testPackIp4AddressBytesInvalidValue() {
+    public void testPackIp4AddressBytesInvalidValue1() {
         try {
             NetworkUtil.packIp4AddressBytes(new short[] { 256, 168, 1, 123 });
+            fail("invalid value");
+        } catch (KuraException e) {
+        }
+    }
+
+    @Test
+    public void testPackIp4AddressBytesInvalidValue2() {
+        try {
+            NetworkUtil.packIp4AddressBytes(new short[] { -1, 168, 1, 123 });
             fail("invalid value");
         } catch (KuraException e) {
         }
@@ -547,9 +565,18 @@ public class NetworkUtilTest {
     }
 
     @Test
-    public void testConvertIP6AddressStringOutOfRangeValue() {
+    public void testConvertIP6AddressStringOutOfRangeValue1() {
         try {
             NetworkUtil.convertIP6Address("12345:db8:85a3:0:0:8a2e:370:7334");
+            fail("out of range value");
+        } catch (KuraException e) {
+        }
+    }
+
+    @Test
+    public void testConvertIP6AddressStringOutOfRangeValue2() {
+        try {
+            NetworkUtil.convertIP6Address("-1:db8:85a3:0:0:8a2e:370:7334");
             fail("out of range value");
         } catch (KuraException e) {
         }
@@ -708,9 +735,18 @@ public class NetworkUtilTest {
     }
 
     @Test
-    public void testMacToBytesInvalidValue() {
+    public void testMacToBytesInvalidValue1() {
         try {
             NetworkUtil.macToBytes("g1:23:45:67:89:AB");
+            fail("invalid value");
+        } catch (KuraException e) {
+        }
+    }
+
+    @Test
+    public void testMacToBytesInvalidValue2() {
+        try {
+            NetworkUtil.macToBytes("01::45:67:89:AB");
             fail("invalid value");
         } catch (KuraException e) {
         }
