@@ -41,8 +41,25 @@ public class LoopbackInterfaceConfigImplTest {
         }
 	}
 
+    @Test
+    public void testToString1() {
+        try {
+        	LoopbackInterfaceConfigImpl config = createConfig(0);
+	        
+	        String expected = "name=loopbackInterface :: hardwareAddress= :: loopback=false" +
+	                " :: pointToPoint=false :: virtual=false :: supportsMulticast=false" +
+	                " :: up=false :: mtu=0 :: driver=null :: driverVersion=null" +
+	                " :: firmwareVersion=null :: state=null :: autoConnect=false" +
+	                " :: InterfaceAddress=NetConfig: no configurations ";
+	
+	        assertEquals(expected, config.toString());
+        } catch (UnknownHostException e) {
+            fail("unexpected exception");
+        }
+    }
+
 	@Test
-	public void testToString() {
+	public void testToString2() {
 		try {
 			LoopbackInterfaceConfigImpl config = createConfig(2);
 	        
