@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import org.eclipse.kura.KuraException;
 import org.eclipse.kura.core.net.WifiAccessPointImpl;
 import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.net.wifi.WifiAccessPoint;
@@ -34,7 +35,12 @@ class IWAPParser {
     private IWSecuritySectionParser securityParser = null;
 
     public IWAPParser(String macAddressString) {
-        this.hardwareAddress = NetworkUtil.macToBytes(macAddressString);
+        try {
+            this.hardwareAddress = NetworkUtil.macToBytes(macAddressString);
+        } catch (KuraException e) {
+            // Invalid MAC address string
+            this.hardwareAddress = null;
+        }
     }
 
     public WifiAccessPoint toWifiAccessPoint() {

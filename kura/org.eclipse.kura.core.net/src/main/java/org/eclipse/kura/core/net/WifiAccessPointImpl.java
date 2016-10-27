@@ -14,6 +14,7 @@ package org.eclipse.kura.core.net;
 import java.util.EnumSet;
 import java.util.List;
 
+import org.eclipse.kura.KuraException;
 import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.net.wifi.WifiAccessPoint;
 import org.eclipse.kura.net.wifi.WifiMode;
@@ -116,8 +117,10 @@ public class WifiAccessPointImpl implements WifiAccessPoint {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("ssid=").append(this.ssid);
-        if (this.hardwareAddress != null && this.hardwareAddress.length > 0) {
+        try {
             sb.append(" :: hardwareAddress=").append(NetworkUtil.macToString(this.hardwareAddress));
+        } catch (KuraException e) {
+            // Hardware address is invalid, do not append it
         }
         sb.append(" :: frequency=").append(this.frequency).append(" :: mode=").append(this.mode);
         if (this.bitrate != null && this.bitrate.size() > 0) {
