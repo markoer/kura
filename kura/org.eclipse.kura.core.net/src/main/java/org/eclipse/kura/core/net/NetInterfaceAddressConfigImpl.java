@@ -45,11 +45,10 @@ public class NetInterfaceAddressConfigImpl extends NetInterfaceAddressImpl imple
             return true;
         }
 
-        /*
-         * if(!super.equals(obj)) {
-         * return false;
-         * }
-         */
+		if (!super.equals(obj)) {
+			return false;
+		}
+        
         if (!(obj instanceof NetInterfaceAddressConfigImpl)) {
             return false;
         }
