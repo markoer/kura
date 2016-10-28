@@ -58,6 +58,15 @@ public class NetInterfaceAddressConfigImpl extends NetInterfaceAddressImpl imple
 
         List<NetConfig> thisNetConfigs = getConfigs();
         List<NetConfig> otherNetConfigs = other.getConfigs();
+        
+        if ((thisNetConfigs == null) && (otherNetConfigs == null)) {
+        	// Both configurations are null
+        	return true;
+        }
+        else if ((thisNetConfigs == null) || (otherNetConfigs == null)) {
+        	// One configuration is null but the other one is not, so a null pointer exception would be thrown below!
+            return false;
+        }
 
         if (thisNetConfigs.size() != otherNetConfigs.size()) {
             return false;

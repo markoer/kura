@@ -16,8 +16,10 @@ import org.eclipse.kura.net.NetInterfaceState;
 import org.eclipse.kura.net.NetInterfaceType;
 import org.eclipse.kura.usb.UsbDevice;
 import org.eclipse.kura.usb.UsbNetDevice;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 
+@FixMethodOrder
 public class EthernetInterfaceConfigImplTest {
 
     @Test
@@ -338,35 +340,35 @@ public class EthernetInterfaceConfigImplTest {
         }
     }
 
-    EthernetInterfaceConfigImpl createConfig(int noOfAddresses) throws UnknownHostException {
-        EthernetInterfaceImpl<NetInterfaceAddressImpl> interfaceImpl = new EthernetInterfaceImpl<NetInterfaceAddressImpl>(
-                "ethInterface");
-        
-        if (noOfAddresses > 0) {
-            List<NetInterfaceAddressImpl> interfaceAddresses = new ArrayList<NetInterfaceAddressImpl>();
-    
-            for (int i = 0; i < noOfAddresses; i++) {
-                try {
-                    String ipAddress = "10.0.0." + Integer.toString(i + 1);
-                    NetInterfaceAddressImpl interfaceAddress = createAddress(ipAddress);
-                    interfaceAddresses.add(interfaceAddress);
-                } catch (UnknownHostException e) {
-                    throw e;
-                }
-            }
-    
-            interfaceImpl.setNetInterfaceAddresses(interfaceAddresses);
-        } else {
-            interfaceImpl.setNetInterfaceAddresses(null);
-        }
+	EthernetInterfaceConfigImpl createConfig(int noOfAddresses) throws UnknownHostException {
+		EthernetInterfaceImpl<NetInterfaceAddressConfigImpl> interfaceImpl = new EthernetInterfaceImpl<NetInterfaceAddressConfigImpl>(
+				"ethInterface");
 
-        EthernetInterfaceConfigImpl config = new EthernetInterfaceConfigImpl(interfaceImpl);
-        return config;
-    }
+		if (noOfAddresses > 0) {
+			List<NetInterfaceAddressConfigImpl> interfaceAddresses = new ArrayList<NetInterfaceAddressConfigImpl>();
 
-    NetInterfaceAddressImpl createAddress(String ipAddress) throws UnknownHostException {
+			for (int i = 0; i < noOfAddresses; i++) {
+				try {
+					String ipAddress = "10.0.0." + Integer.toString(i + 1);
+					NetInterfaceAddressConfigImpl interfaceAddress = createAddress(ipAddress);
+					interfaceAddresses.add(interfaceAddress);
+				} catch (UnknownHostException e) {
+					throw e;
+				}
+			}
+
+			interfaceImpl.setNetInterfaceAddresses(interfaceAddresses);
+		} else {
+			interfaceImpl.setNetInterfaceAddresses(null);
+		}
+
+		EthernetInterfaceConfigImpl config = new EthernetInterfaceConfigImpl(interfaceImpl);
+		return config;
+	}
+
+	NetInterfaceAddressConfigImpl createAddress(String ipAddress) throws UnknownHostException {
         try {
-            NetInterfaceAddressImpl interfaceAddress = new NetInterfaceAddressImpl();
+        	NetInterfaceAddressConfigImpl interfaceAddress = new NetInterfaceAddressConfigImpl();
 
             interfaceAddress.setAddress(IPAddress.parseHostAddress(ipAddress));
 
