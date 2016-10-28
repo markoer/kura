@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.eclipse.kura.KuraConnectException;
 import org.eclipse.kura.configuration.ConfigurationService;
-import org.eclipse.kura.core.TestUtil;
+import org.eclipse.kura.core.testutil.TestUtil;
 import org.eclipse.kura.core.db.HsqlDbServiceImpl;
 import org.eclipse.kura.data.DataTransportService;
 import org.eclipse.kura.data.transport.listener.DataTransportListener;
@@ -31,6 +31,7 @@ public class DataServiceImplTest {
     public static void setUp() {
     }
 
+    @Test
 	public void testActivateMissingProperties() {
 		DataServiceImpl ds = new DataServiceImpl(); 
 
@@ -46,6 +47,7 @@ public class DataServiceImplTest {
 		}
 	}
 	
+	@Test
 	public void testActivateNoDBService() {
 		DataServiceImpl ds = new DataServiceImpl(); 
 		
@@ -129,10 +131,10 @@ public class DataServiceImplTest {
 		
 		Mockito.verify(dataTransportServiceMock).addDataTransportListener((DataTransportListener) Mockito.anyObject());;
 
-		assertNotNull(TestUtil.getFieldValue(ds, "m_reconnectExecutor"));
-		assertNotNull(TestUtil.getFieldValue(ds, "m_publisherExecutor"));
-		assertNotNull(TestUtil.getFieldValue(ds, "m_congestionExecutor"));
-		assertNotNull(TestUtil.getFieldValue(ds, "m_store"));
+		assertNotNull("reconnect executor not null", TestUtil.getFieldValue(ds, "m_reconnectExecutor"));
+		assertNotNull("publisher executor not null", TestUtil.getFieldValue(ds, "m_publisherExecutor"));
+		assertNotNull("congestion executor not null", TestUtil.getFieldValue(ds, "m_congestionExecutor"));
+		assertNotNull("store not null", TestUtil.getFieldValue(ds, "m_store"));
 	}
 
 //	@Test

@@ -96,5 +96,6 @@
         <module>org.eclipse.kura.core.configuration.test</module>
         <module>org.eclipse.kura.core.net.test</module>
         <module>org.eclipse.kura.core.test</module>
+        <module>org.eclipse.kura.core.testutil</module>
     </modules>
 </project>
