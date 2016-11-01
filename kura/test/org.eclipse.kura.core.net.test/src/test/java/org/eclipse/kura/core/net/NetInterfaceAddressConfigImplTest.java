@@ -1,6 +1,9 @@
 package org.eclipse.kura.core.net;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -11,8 +14,9 @@ import org.eclipse.kura.net.NetConfigIP4;
 import org.eclipse.kura.net.NetInterfaceStatus;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
-@FixMethodOrder
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class NetInterfaceAddressConfigImplTest {
 
 	@Test

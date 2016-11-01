@@ -7,8 +7,9 @@ import static org.junit.Assert.fail;
 import org.eclipse.kura.KuraException;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
-@FixMethodOrder
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class NetworkUtilTest {
 
     // Unit tests for method: calculateNetwork
