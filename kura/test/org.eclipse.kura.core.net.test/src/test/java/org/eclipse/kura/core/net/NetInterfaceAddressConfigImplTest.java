@@ -17,20 +17,25 @@ public class NetInterfaceAddressConfigImplTest {
 
 	@Test
 	public void testEqualsObject() {
-		NetInterfaceAddressConfigImpl a = createAddress();
-		NetInterfaceAddressConfigImpl b = createAddress();
+		NetInterfaceAddressConfigImpl a = createConfig();
+		assertEquals(a, a);
+		
+		NetInterfaceAddressConfigImpl b = createConfig();
 		assertEquals(a, b);
 	}
 
 	@Test
 	public void testEqualsObjectDifferentIPAddress() {
 		try {
-			NetInterfaceAddressConfigImpl a = createAddress();
-			NetInterfaceAddressConfigImpl b = createAddress();
-			
+			NetInterfaceAddressConfigImpl a = createConfig();
+			NetInterfaceAddressConfigImpl b = createConfig();
+
 			a.setAddress(IPAddress.parseHostAddress("10.0.0.101"));
 			b.setAddress(IPAddress.parseHostAddress("10.0.0.102"));
 			
+			assertNotEquals(a, b);
+			
+			a.setAddress(null);
 			assertNotEquals(a, b);
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
@@ -40,8 +45,8 @@ public class NetInterfaceAddressConfigImplTest {
 	@Test
 	public void testEqualsObjectDifferentBroadcast() {
 		try {
-			NetInterfaceAddressConfigImpl a = createAddress();
-			NetInterfaceAddressConfigImpl b = createAddress();
+			NetInterfaceAddressConfigImpl a = createConfig();
+			NetInterfaceAddressConfigImpl b = createConfig();
 			
 			a.setBroadcast(IPAddress.parseHostAddress("10.0.1.255"));
 			b.setBroadcast(IPAddress.parseHostAddress("10.0.2.255"));
@@ -55,8 +60,8 @@ public class NetInterfaceAddressConfigImplTest {
 	@Test
 	public void testEqualsObjectDifferentDnsServers() {
 		try {
-			NetInterfaceAddressConfigImpl a = createAddress();
-			NetInterfaceAddressConfigImpl b = createAddress();
+			NetInterfaceAddressConfigImpl a = createConfig();
+			NetInterfaceAddressConfigImpl b = createConfig();
 
 			ArrayList<IPAddress> dnsServersA = new ArrayList<IPAddress>();
 			dnsServersA.add(IPAddress.parseHostAddress("10.0.2.1"));
@@ -77,8 +82,8 @@ public class NetInterfaceAddressConfigImplTest {
 	@Test
 	public void testEqualsObjectDifferentGateway() {
 		try {
-			NetInterfaceAddressConfigImpl a = createAddress();
-			NetInterfaceAddressConfigImpl b = createAddress();
+			NetInterfaceAddressConfigImpl a = createConfig();
+			NetInterfaceAddressConfigImpl b = createConfig();
 			
 			a.setGateway(IPAddress.parseHostAddress("10.0.1.1"));
 			b.setGateway(IPAddress.parseHostAddress("10.0.2.1"));
@@ -91,8 +96,8 @@ public class NetInterfaceAddressConfigImplTest {
 
 	@Test
 	public void testEqualsObjectDifferentNetConfigs() {
-		NetInterfaceAddressConfigImpl a = createAddress();
-		NetInterfaceAddressConfigImpl b = createAddress();
+		NetInterfaceAddressConfigImpl a = createConfig();
+		NetInterfaceAddressConfigImpl b = createConfig();
 
 		ArrayList<NetConfig> configsA = new ArrayList<NetConfig>();
 		configsA.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true));
@@ -105,13 +110,36 @@ public class NetInterfaceAddressConfigImplTest {
 		b.setNetConfigs(configsB);
 
 		assertNotEquals(a, b);
+		
+		a.setNetConfigs(null);
+		assertNotEquals(a, b);
+
+		a.setNetConfigs(configsA);
+		b.setNetConfigs(null);
+		assertNotEquals(a, b);
+
+		ArrayList<NetConfig> configsA2 = new ArrayList<NetConfig>();
+		configsA2.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
+		configsA2.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledWAN, false));
+		a.setNetConfigs(configsA2);
+
+		ArrayList<NetConfig> configsB2 = new ArrayList<NetConfig>();
+		configsB2.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
+		b.setNetConfigs(configsB2);
+		
+		assertNotEquals(a, b);
+
+		configsB2.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
+		b.setNetConfigs(configsB2);
+		
+		assertNotEquals(a, b);
 	}
 
 	@Test
 	public void testEqualsObjectDifferentNetmask() {
 		try {
-			NetInterfaceAddressConfigImpl a = createAddress();
-			NetInterfaceAddressConfigImpl b = createAddress();
+			NetInterfaceAddressConfigImpl a = createConfig();
+			NetInterfaceAddressConfigImpl b = createConfig();
 			
 			a.setNetmask(IPAddress.parseHostAddress("255.255.0.0"));
 			b.setNetmask(IPAddress.parseHostAddress("255.0.0.0"));
@@ -124,23 +152,74 @@ public class NetInterfaceAddressConfigImplTest {
 
 	@Test
 	public void testEqualsObjectDifferentNetworkPrefixLength() {
-		NetInterfaceAddressConfigImpl a = createAddress();
-		NetInterfaceAddressConfigImpl b = createAddress();
+		NetInterfaceAddressConfigImpl a = createConfig();
+		NetInterfaceAddressConfigImpl b = createConfig();
 
 		a.setNetworkPrefixLength((short) 20);
 		b.setNetworkPrefixLength((short) 30);
 
 		assertNotEquals(a, b);
 	}
+
+	@Test
+	public void testEqualsObjectNetInterfaceAddress() {
+		NetInterfaceAddressImpl a = new NetInterfaceAddressImpl();
+		String b = "";
+		
+		assertNotEquals(a, b);
+	}
+
+	@Test
+	public void testEqualsObjectNetInterfaceAddressConfig() {
+		NetInterfaceAddressConfigImpl a = new NetInterfaceAddressConfigImpl();
+		NetInterfaceAddressImpl b = new NetInterfaceAddressImpl();
+		
+		assertNotEquals(a, b);
+	}
 	
-//	@Test
-//	public void testNetInterfaceAddressConfigImpl() {
-//		fail("Not yet implemented");
-//	}
+	@Test
+	public void testNetInterfaceAddressConfigImplDefault() {
+		NetInterfaceAddressConfigImpl value = new NetInterfaceAddressConfigImpl();
+		
+		assertNull(value.getAddress());
+		assertEquals(0, value.getNetworkPrefixLength());
+		assertNull(value.getNetmask());
+		assertNull(value.getGateway());
+		assertNull(value.getBroadcast());
+		assertNull(value.getDnsServers());
+	}
+
+	@Test
+	public void testNetInterfaceAddressConfigImplFromAddress() {
+		try {
+			ArrayList<IPAddress> dnsServers = new ArrayList<IPAddress>();
+			dnsServers.add(IPAddress.parseHostAddress("10.0.1.1"));
+			dnsServers.add(IPAddress.parseHostAddress("10.0.1.2"));
+			
+			NetInterfaceAddressImpl address = new NetInterfaceAddressImpl();
+			address.setAddress(IPAddress.parseHostAddress("10.0.0.100"));
+			address.setBroadcast(IPAddress.parseHostAddress("10.0.0.255"));
+			address.setDnsServers(dnsServers);
+			address.setGateway(IPAddress.parseHostAddress("10.0.0.1"));
+			address.setNetmask(IPAddress.parseHostAddress("255.255.255.0"));
+			address.setNetworkPrefixLength((short)24);
+			
+			NetInterfaceAddressConfigImpl value = new NetInterfaceAddressConfigImpl(address);
+			
+			assertEquals(IPAddress.parseHostAddress("10.0.0.100"), value.getAddress());
+			assertEquals(24, value.getNetworkPrefixLength());
+			assertEquals(IPAddress.parseHostAddress("255.255.255.0"), value.getNetmask());
+			assertEquals(IPAddress.parseHostAddress("10.0.0.1"), value.getGateway());
+			assertEquals(IPAddress.parseHostAddress("10.0.0.255"), value.getBroadcast());
+			assertEquals(dnsServers, value.getDnsServers());
+		} catch (UnknownHostException e) {
+			fail("unexpoected exception");
+		}
+	}
 
 	@Test
 	public void testNetConfigs() {
-		NetInterfaceAddressConfigImpl value = createAddress();
+		NetInterfaceAddressConfigImpl value = createConfig();
 
 		ArrayList<NetConfig> configs = new ArrayList<NetConfig>();
 		configs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true));
@@ -155,87 +234,56 @@ public class NetInterfaceAddressConfigImplTest {
 		assertEquals(value.getConfigs(), configs);
 	}
 
-//	@Test
-//	public void testToString() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testNetInterfaceAddressImpl() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testNetInterfaceAddressImplNetInterfaceAddress() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetAddress() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetAddress() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetNetworkPrefixLength() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetNetworkPrefixLength() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetNetmask() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetNetmask() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetGateway() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetGateway() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetBroadcast() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetBroadcast() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetDnsServers() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testSetDnsServers() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testCompare() {
-//		fail("Not yet implemented");
-//	}
+	@Test
+	public void testToStringNoConfigs() {
+		NetInterfaceAddressConfigImpl value = createConfig();
+		value.setNetConfigs(null);
 
-	private NetInterfaceAddressConfigImpl createAddress() {
+		String expected = "NetConfig: no configurations";
+		
+		assertEquals(expected, value.toString());
+	}
+
+	@Test
+	public void testToStringEmptyConfigs() {
+		NetInterfaceAddressConfigImpl value = createConfig();
+		value.setNetConfigs(new ArrayList<NetConfig>());
+
+		String expected = "";
+		
+		assertEquals(expected, value.toString());
+	}
+
+	@Test
+	public void testToStringNullConfig() {
+		NetInterfaceAddressConfigImpl value = createConfig();
+		
+		ArrayList<NetConfig> configs = new ArrayList<NetConfig>();
+		configs.add(null);
+		value.setNetConfigs(configs);
+
+		String expected = "NetConfig: null - ";
+		
+		assertEquals(expected, value.toString());
+	}
+
+	@Test
+	public void testToStringWithConfigs() {
+		NetInterfaceAddressConfigImpl value = createConfig();
+
+		String expected = "NetConfig: NetConfigIP4 [winsServers=[], super.toString()=NetConfigIP" +
+				" [m_status=netIPv4StatusEnabledLAN, m_autoConnect=true, m_dhcp=false, m_address=null," +
+				" m_networkPrefixLength=-1, m_subnetMask=null, m_gateway=null, m_dnsServers=[]," +
+				" m_domains=[], m_properties={}]] - " +
+				"NetConfig: NetConfigIP4 [winsServers=[], super.toString()=NetConfigIP" +
+				" [m_status=netIPv4StatusEnabledWAN, m_autoConnect=false, m_dhcp=false, m_address=null," +
+				" m_networkPrefixLength=-1, m_subnetMask=null, m_gateway=null, m_dnsServers=[]," +
+				" m_domains=[], m_properties={}]] - ";
+		
+		assertEquals(expected, value.toString());
+	}
+
+	private NetInterfaceAddressConfigImpl createConfig() {
 		try {
 			ArrayList<IPAddress> dnsServers = new ArrayList<IPAddress>();
 			dnsServers.add(IPAddress.parseHostAddress("10.0.1.1"));
