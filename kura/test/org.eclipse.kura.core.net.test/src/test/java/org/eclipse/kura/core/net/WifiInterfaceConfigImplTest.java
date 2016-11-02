@@ -16,8 +16,11 @@ import org.eclipse.kura.net.NetInterfaceState;
 import org.eclipse.kura.net.NetInterfaceType;
 import org.eclipse.kura.net.wifi.WifiInterface.Capability;
 import org.eclipse.kura.usb.UsbNetDevice;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class WifiInterfaceConfigImplTest {
 
 	@Test

@@ -26,7 +26,7 @@ public class NetInterfaceAddressConfigImpl extends NetInterfaceAddressImpl imple
     }
 
     public NetInterfaceAddressConfigImpl(NetInterfaceAddress other) {
-        super(other);
+        super(other); // TODO: shouldn't this also copy the configs?
     }
 
     @Override
@@ -45,11 +45,10 @@ public class NetInterfaceAddressConfigImpl extends NetInterfaceAddressImpl imple
             return true;
         }
 
-        /*
-         * if(!super.equals(obj)) {
-         * return false;
-         * }
-         */
+		if (!super.equals(obj)) {
+			return false;
+		}
+        
         if (!(obj instanceof NetInterfaceAddressConfigImpl)) {
             return false;
         }

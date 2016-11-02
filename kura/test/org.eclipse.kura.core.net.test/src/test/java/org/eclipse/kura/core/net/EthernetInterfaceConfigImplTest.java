@@ -18,8 +18,9 @@ import org.eclipse.kura.usb.UsbDevice;
 import org.eclipse.kura.usb.UsbNetDevice;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
-@FixMethodOrder
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class EthernetInterfaceConfigImplTest {
 
     @Test
