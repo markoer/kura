@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
@@ -538,8 +539,6 @@ public class ConfigurationServiceTest {
     public void testGetComponentConfiguration() {
         // fail("Not yet implemented");
     }
-
-    // TODO test all related internal methods
 
     /*
      * FIXME: default ComponentConfigurationImpl constructor doesn't initialize properties, but interface doesn't
@@ -1328,6 +1327,192 @@ public class ConfigurationServiceTest {
         assertEquals("correct snapshot", "123", cfg1.getPid());
         assertNotNull("configuration properties map is returned", cfg1.getConfigurationProperties());
         assertEquals("configuration properties map is not empty", 1, cfg1.getConfigurationProperties().size());
+    }
+
+    @Test
+    public void testLoadLatestSnapshotConfigurationsNullSnapshots() throws Throwable {
+        // test null snapshot pids list
+        final Set<Long> snapshotList = null;
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return snapshotList;
+            }
+        };
+
+        List<ComponentConfigurationImpl> result = (List<ComponentConfigurationImpl>) TestUtil.invokePrivate(cs,
+                "loadLatestSnapshotConfigurations");
+
+        assertNull("null result", result);
+    }
+
+    @Test
+    public void testLoadLatestSnapshotConfigurationsEmptySnapshots() throws Throwable {
+        // test empty snapshot pids list
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return snapshotList;
+            }
+        };
+
+        List<ComponentConfigurationImpl> result = (List<ComponentConfigurationImpl>) TestUtil.invokePrivate(cs,
+                "loadLatestSnapshotConfigurations");
+
+        assertNull("null result", result);
+    }
+
+    @Test
+    public void testLoadLatestSnapshotConfigurationsNullXML() throws Throwable {
+        // test no XML being returned
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(123L);
+        snapshotList.add(1234L);
+
+        final boolean[] calls = { false, false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                calls[0] = true;
+                return snapshotList;
+            }
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                calls[1] = true;
+
+                assertEquals(1234L, snapshotID);
+
+                return null;
+            }
+        };
+
+        List<ComponentConfigurationImpl> result = (List<ComponentConfigurationImpl>) TestUtil.invokePrivate(cs,
+                "loadLatestSnapshotConfigurations");
+
+        assertNull("null result", result);
+
+        assertTrue("call snapshots", calls[0]);
+        assertTrue("call load xml", calls[1]);
+    }
+
+    @Test
+    public void testLoadLatestSnapshotConfigurationsXmlLoads() throws Throwable {
+        // test scenario where XML is actually loaded from encrypted file
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(123L);
+        snapshotList.add(1234L);
+
+        final XmlComponentConfigurations xmlComponentConfigurations = new XmlComponentConfigurations();
+        List<ComponentConfigurationImpl> configurations = new ArrayList<ComponentConfigurationImpl>();
+        xmlComponentConfigurations.setConfigurations(configurations);
+
+        final boolean[] calls = { false, false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                calls[0] = true;
+                return snapshotList;
+            }
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                calls[1] = true;
+
+                assertEquals(1234L, snapshotID);
+
+                return xmlComponentConfigurations;
+            }
+        };
+
+        List<ComponentConfigurationImpl> result = (List<ComponentConfigurationImpl>) TestUtil.invokePrivate(cs,
+                "loadLatestSnapshotConfigurations");
+
+        assertNotNull("xml config not null", result);
+
+        assertTrue("call snapshots", calls[0]);
+        assertTrue("call load xml", calls[1]);
+    }
+
+    @Test
+    public void testLoadLatestSnapshotConfigurationsRecursiveAfterEncryption() throws Throwable {
+        // test scenario where latest snapshot is not encrypted and all snapshots are encrypted before being loaded
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(123L);
+        snapshotList.add(1234L);
+
+        final XmlComponentConfigurations xmlComponentConfigurations = new XmlComponentConfigurations();
+        List<ComponentConfigurationImpl> configurations = new ArrayList<ComponentConfigurationImpl>();
+        xmlComponentConfigurations.setConfigurations(configurations);
+
+        final String dir = "snapDir";
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(d1, "snapshot_123.xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+        File f2 = new File(d1, "snapshot_1234.xml");
+        f2.createNewFile();
+        f2.deleteOnExit();
+
+        final int[] calls = { 0, 0 };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                calls[0]++;
+                if (calls[0] < 3) {
+                    return snapshotList;
+                } else {
+                    return null;
+                }
+            }
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                calls[1]++;
+                throw new KuraException(KuraErrorCode.CONFIGURATION_ERROR);
+            }
+        };
+
+        List<ComponentConfigurationImpl> result = (List<ComponentConfigurationImpl>) TestUtil.invokePrivate(cs,
+                "loadLatestSnapshotConfigurations");
+
+        assertNull("xml config null", result);
+
+        assertEquals("call snapshots", 4, calls[0]);
+        assertEquals("call load xml", 3, calls[1]);
+    }
+
+    @Test
+    public void testEncryptPlainSnapshots() {
+        // TODO
+    }
+
+    @Test
+    public void testWriteSnapshot() {
+        // TODO
+    }
+
+    @Test
+    public void testSaveSnapshot() {
+        // TODO
     }
 
     @Test
