@@ -5,11 +5,20 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Dictionary;
@@ -25,8 +34,10 @@ import org.eclipse.kura.configuration.ConfigurationService;
 import org.eclipse.kura.configuration.Password;
 import org.eclipse.kura.configuration.metatype.OCD;
 import org.eclipse.kura.core.configuration.metatype.Tocd;
+import org.eclipse.kura.core.configuration.util.XmlUtil;
 import org.eclipse.kura.core.testutil.TestUtil;
 import org.eclipse.kura.crypto.CryptoService;
+import org.eclipse.kura.system.SystemService;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
@@ -125,11 +136,11 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
         IOException ioe = new IOException("test");
-        Mockito.when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenThrow(ioe);
+        when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenThrow(ioe);
 
         try {
             cs.createFactoryConfiguration(factoryPid, pid, properties, takeSnapshot);
@@ -170,18 +181,18 @@ public class ConfigurationServiceTest {
             }
         };
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
-        Configuration cfgMock = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
+        Configuration cfgMock = mock(Configuration.class);
+        when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
 
-        Mockito.when(cfgMock.getPid()).thenReturn(caPid);
+        when(cfgMock.getPid()).thenReturn(caPid);
 
-        Configuration cfgMock2 = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
+        Configuration cfgMock2 = mock(Configuration.class);
+        when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
 
-        Mockito.doAnswer(new Answer() {
+        doAnswer(new Answer() {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 Dictionary<String, Object> dict = (Dictionary<String, Object>) invocation.getArguments()[0];
@@ -194,11 +205,11 @@ public class ConfigurationServiceTest {
 
                 return null;
             }
-        }).when(cfgMock2).update((Dictionary<String, Object>) Mockito.anyObject());
+        }).when(cfgMock2).update((Dictionary<String, Object>) anyObject());
 
         cs.createFactoryConfiguration(factoryPid, pid, properties, takeSnapshot);
 
-        Mockito.verify(cfgMock2, Mockito.times(1)).update((Dictionary<String, Object>) Mockito.anyObject());
+        verify(cfgMock2, times(1)).update((Dictionary<String, Object>) anyObject());
     }
 
     @Test
@@ -217,16 +228,16 @@ public class ConfigurationServiceTest {
             };
         };
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
-        Configuration cfgMock = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
+        Configuration cfgMock = mock(Configuration.class);
+        when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
 
-        Mockito.when(cfgMock.getPid()).thenReturn(caPid);
+        when(cfgMock.getPid()).thenReturn(caPid);
 
-        Configuration cfgMock2 = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
+        Configuration cfgMock2 = mock(Configuration.class);
+        when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
 
         properties.put("key1", "val1");
         properties.put("key2", "val2");
@@ -250,7 +261,7 @@ public class ConfigurationServiceTest {
 
         cs.createFactoryConfiguration(factoryPid, pid, properties, takeSnapshot);
 
-        Mockito.verify(cfgMock2, Mockito.times(1)).update((Dictionary<String, Object>) Mockito.anyObject());
+        verify(cfgMock2, Mockito.times(1)).update((Dictionary<String, Object>) Mockito.anyObject());
     }
 
     @Test
@@ -280,16 +291,16 @@ public class ConfigurationServiceTest {
             }
         };
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
-        Configuration cfgMock = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
+        Configuration cfgMock = mock(Configuration.class);
+        when(configAdminMock.createFactoryConfiguration(factoryPid, null)).thenReturn(cfgMock);
 
-        Mockito.when(cfgMock.getPid()).thenReturn(caPid);
+        when(cfgMock.getPid()).thenReturn(caPid);
 
-        Configuration cfgMock2 = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
+        Configuration cfgMock2 = mock(Configuration.class);
+        when(configAdminMock.getConfiguration(caPid, "?")).thenReturn(cfgMock2);
 
         assertFalse("snapshots init OK", snapshots[0]);
 
@@ -389,15 +400,15 @@ public class ConfigurationServiceTest {
         pids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
         pids.put(servicePid, servicePid);
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
-        Configuration configMock = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.getConfiguration(servicePid, "?")).thenReturn(configMock);
+        Configuration configMock = mock(Configuration.class);
+        when(configAdminMock.getConfiguration(servicePid, "?")).thenReturn(configMock);
 
         cs.deleteFactoryConfiguration(servicePid, takeSnapshot);
 
-        Mockito.verify(configMock, Mockito.times(1)).delete();
+        verify(configMock, Mockito.times(1)).delete();
     }
 
     @Test
@@ -431,17 +442,17 @@ public class ConfigurationServiceTest {
         pids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
         pids.put(servicePid, servicePid);
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
-        Configuration configMock = Mockito.mock(Configuration.class);
-        Mockito.when(configAdminMock.getConfiguration(servicePid, "?")).thenReturn(configMock);
+        Configuration configMock = mock(Configuration.class);
+        when(configAdminMock.getConfiguration(servicePid, "?")).thenReturn(configMock);
 
         assertFalse("snapshot still untouched", snapshots[0]);
 
         cs.deleteFactoryConfiguration(servicePid, takeSnapshot);
 
-        Mockito.verify(configMock, Mockito.times(1)).delete();
+        verify(configMock, Mockito.times(1)).delete();
         assertTrue("snapshot taken", snapshots[0]);
     }
 
@@ -461,11 +472,11 @@ public class ConfigurationServiceTest {
         pids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
         pids.put(servicePid, servicePid);
 
-        ConfigurationAdmin configAdminMock = Mockito.mock(ConfigurationAdmin.class);
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
         cs.setConfigurationAdmin(configAdminMock);
 
         Throwable ioe = new IOException("test");
-        Mockito.when(configAdminMock.getConfiguration(servicePid, "?")).thenThrow(ioe);
+        when(configAdminMock.getConfiguration(servicePid, "?")).thenThrow(ioe);
 
         try {
             cs.deleteFactoryConfiguration(servicePid, takeSnapshot);
@@ -520,18 +531,18 @@ public class ConfigurationServiceTest {
 
     @Test
     public void testGetComponentConfigurations() {
-        //// fail("Not yet implemented");
+        // fail("Not yet implemented");
     }
 
     @Test
     public void testGetComponentConfiguration() {
-        //// fail("Not yet implemented");
+        // fail("Not yet implemented");
     }
 
     // TODO test all related internal methods
 
     /*
-     * Problem: default ComponentConfigurationImpl constructor doesn't initialize properties, but interface doesn't
+     * FIXME: default ComponentConfigurationImpl constructor doesn't initialize properties, but interface doesn't
      * offer a setter method. Result... NPE.
      */
     @Test
@@ -549,17 +560,17 @@ public class ConfigurationServiceTest {
         props.put(passKey, pass);
         props.put("k2", "val2");
 
-        CryptoService cryptoServiceMock = Mockito.mock(CryptoService.class);
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
         char[] decpass = "decpass".toCharArray();
-        Mockito.when(cryptoServiceMock.decryptAes(password.toCharArray())).thenReturn(decpass);
+        when(cryptoServiceMock.decryptAes(password.toCharArray())).thenReturn(decpass);
 
         assertEquals("config size", 2, props.size());
 
         Map<String, Object> result = cs.decryptPasswords(config);
 
-        Mockito.verify(cryptoServiceMock, times(1)).decryptAes(password.toCharArray());
+        verify(cryptoServiceMock, times(1)).decryptAes(password.toCharArray());
 
         assertNotNull("properties not null", result);
         assertEquals("config properties size", 2, result.size());
@@ -580,23 +591,23 @@ public class ConfigurationServiceTest {
         String passKey = "pass1";
         props.put(passKey, pass);
 
-        CryptoService cryptoServiceMock = Mockito.mock(CryptoService.class);
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
         KuraException exc = new KuraException(KuraErrorCode.STORE_ERROR);
-        Mockito.when(cryptoServiceMock.decryptAes((char[]) Mockito.anyObject())).thenThrow(exc);
+        when(cryptoServiceMock.decryptAes((char[]) Mockito.anyObject())).thenThrow(exc);
 
         assertEquals("config size before decryption", 1, props.size());
 
         cs.decryptPasswords(config);
 
-        Mockito.verify(cryptoServiceMock, times(1)).decryptAes((char[]) Mockito.anyObject());
+        verify(cryptoServiceMock, times(1)).decryptAes((char[]) Mockito.anyObject());
 
         assertEquals("config size after decryption", 1, props.size());
     }
 
     /*
-     * No input parameter checking performed!
+     * FIXME: No input parameter checking performed!
      */
     @Test
     public void testMergeWithDefaultsNulls() throws KuraException {
@@ -669,16 +680,16 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        Set<String> allPidsMock = Mockito.mock(Set.class);
+        Set<String> allPidsMock = mock(Set.class);
         TestUtil.setFieldValue(cs, "m_allActivatedPids", allPidsMock);
 
         String pid = null;
 
-        Mockito.when(allPidsMock.contains(Mockito.anyObject())).thenThrow(new RuntimeException());
+        when(allPidsMock.contains(Mockito.anyObject())).thenThrow(new RuntimeException());
 
         cs.registerSelfConfiguringComponent(pid);
 
-        Mockito.verify(allPidsMock, times(0)).contains(Mockito.anyObject());
+        verify(allPidsMock, times(0)).contains(Mockito.anyObject());
     }
 
     @Test
@@ -687,13 +698,13 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        Set<String> allPidsMock = Mockito.mock(Set.class);
+        Set<String> allPidsMock = mock(Set.class);
         TestUtil.setFieldValue(cs, "m_allActivatedPids", allPidsMock);
 
         String pid = "pid";
 
-        Mockito.when(allPidsMock.contains(pid)).thenReturn(false);
-        Mockito.when(allPidsMock.add(pid)).thenReturn(true);
+        when(allPidsMock.contains(pid)).thenReturn(false);
+        when(allPidsMock.add(pid)).thenReturn(true);
 
         Map<String, String> spbp = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
         Set<String> asc = (Set<String>) TestUtil.getFieldValue(cs, "m_activatedSelfConfigComponents");
@@ -703,8 +714,8 @@ public class ConfigurationServiceTest {
 
         cs.registerSelfConfiguringComponent(pid);
 
-        Mockito.verify(allPidsMock, times(1)).contains(pid);
-        Mockito.verify(allPidsMock, times(1)).add(pid);
+        verify(allPidsMock, times(1)).contains(pid);
+        verify(allPidsMock, times(1)).add(pid);
 
         assertEquals("added pid to service pids", 1, spbp.size());
         assertEquals("added pid to activated configured components", 1, asc.size());
@@ -716,13 +727,13 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        Set<String> allPidsMock = Mockito.mock(Set.class);
+        Set<String> allPidsMock = mock(Set.class);
         TestUtil.setFieldValue(cs, "m_allActivatedPids", allPidsMock);
 
         String pid = "pid";
 
-        Mockito.when(allPidsMock.contains(pid)).thenReturn(true);
-        Mockito.when(allPidsMock.add(pid)).thenThrow(new RuntimeException());
+        when(allPidsMock.contains(pid)).thenReturn(true);
+        when(allPidsMock.add(pid)).thenThrow(new RuntimeException());
 
         Map<String, String> spbp = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
         Set<String> asc = (Set<String>) TestUtil.getFieldValue(cs, "m_activatedSelfConfigComponents");
@@ -732,8 +743,8 @@ public class ConfigurationServiceTest {
 
         cs.registerSelfConfiguringComponent(pid);
 
-        Mockito.verify(allPidsMock, times(1)).contains(pid);
-        Mockito.verify(allPidsMock, times(0)).add(pid);
+        verify(allPidsMock, times(1)).contains(pid);
+        verify(allPidsMock, times(0)).add(pid);
 
         assertEquals("not added pid to service pids", 0, spbp.size());
         assertEquals("not added pid to activated configured components", 0, asc.size());
@@ -745,16 +756,16 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        Set<String> allPidsMock = Mockito.mock(Set.class);
+        Set<String> allPidsMock = mock(Set.class);
         TestUtil.setFieldValue(cs, "m_allActivatedPids", allPidsMock);
 
         String pid = null;
 
-        Mockito.when(allPidsMock.contains(Mockito.anyObject())).thenThrow(new RuntimeException());
+        when(allPidsMock.contains(Mockito.anyObject())).thenThrow(new RuntimeException());
 
         cs.unregisterComponentConfiguration(pid);
 
-        Mockito.verify(allPidsMock, times(0)).contains(Mockito.anyObject());
+        verify(allPidsMock, times(0)).contains(Mockito.anyObject());
     }
 
     @Test
@@ -792,6 +803,9 @@ public class ConfigurationServiceTest {
         assertFalse("activated pids don't contain pid", asc.contains(pid));
     }
 
+    /*
+     * TODO: maybe fix implementation
+     */
     @Test
     public void testEncryptConfigsNull() throws NoSuchMethodException {
         // test with null parameter
@@ -826,14 +840,14 @@ public class ConfigurationServiceTest {
         // test failed encryption of a password: add a password and run; fail
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        CryptoService cryptoServiceMock = Mockito.mock(CryptoService.class);
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
         // first decryption must fail
-        Mockito.when(cryptoServiceMock.decryptAes("pass".toCharArray()))
+        when(cryptoServiceMock.decryptAes("pass".toCharArray()))
                 .thenThrow(new KuraException(KuraErrorCode.DECODER_ERROR));
         // then also encryption can fail
-        Mockito.when(cryptoServiceMock.encryptAes("pass".toCharArray()))
+        when(cryptoServiceMock.encryptAes("pass".toCharArray()))
                 .thenThrow(new KuraException(KuraErrorCode.ENCODE_ERROR));
 
         List<ComponentConfigurationImpl> configs = new ArrayList<ComponentConfigurationImpl>();
@@ -847,8 +861,8 @@ public class ConfigurationServiceTest {
 
         TestUtil.invokePrivate(cs, "encryptConfigs", configs);
 
-        Mockito.verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
-        Mockito.verify(cryptoServiceMock, times(1)).encryptAes("pass".toCharArray());
+        verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
+        verify(cryptoServiceMock, times(1)).encryptAes("pass".toCharArray());
 
         assertEquals("property was deleted", 0, props.size());
     }
@@ -858,14 +872,14 @@ public class ConfigurationServiceTest {
         // test encrypting a password: add a password and run
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        CryptoService cryptoServiceMock = Mockito.mock(CryptoService.class);
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
         // first decryption must fail
-        Mockito.when(cryptoServiceMock.decryptAes("pass".toCharArray()))
+        when(cryptoServiceMock.decryptAes("pass".toCharArray()))
                 .thenThrow(new KuraException(KuraErrorCode.DECODER_ERROR));
         // so that encryption is attempted at all
-        Mockito.when(cryptoServiceMock.encryptAes("pass".toCharArray())).thenReturn("encrypted".toCharArray());
+        when(cryptoServiceMock.encryptAes("pass".toCharArray())).thenReturn("encrypted".toCharArray());
 
         List<ComponentConfigurationImpl> configs = new ArrayList<ComponentConfigurationImpl>();
 
@@ -878,8 +892,8 @@ public class ConfigurationServiceTest {
 
         TestUtil.invokePrivate(cs, "encryptConfigs", configs);
 
-        Mockito.verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
-        Mockito.verify(cryptoServiceMock, times(1)).encryptAes("pass".toCharArray());
+        verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
+        verify(cryptoServiceMock, times(1)).encryptAes("pass".toCharArray());
 
         assertEquals("property was updated", 1, props.size());
         assertTrue("key still exists", props.containsKey("key1"));
@@ -891,11 +905,11 @@ public class ConfigurationServiceTest {
         // test encrypting a password when the password is already encrypted
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
-        CryptoService cryptoServiceMock = Mockito.mock(CryptoService.class);
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
         // decryption succeeds this time
-        Mockito.when(cryptoServiceMock.decryptAes("pass".toCharArray())).thenReturn("pass".toCharArray());
+        when(cryptoServiceMock.decryptAes("pass".toCharArray())).thenReturn("pass".toCharArray());
 
         List<ComponentConfigurationImpl> configs = new ArrayList<ComponentConfigurationImpl>();
 
@@ -908,8 +922,8 @@ public class ConfigurationServiceTest {
 
         TestUtil.invokePrivate(cs, "encryptConfigs", configs);
 
-        Mockito.verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
-        Mockito.verify(cryptoServiceMock, times(0)).encryptAes((char[]) Mockito.anyObject());
+        verify(cryptoServiceMock, times(1)).decryptAes("pass".toCharArray());
+        verify(cryptoServiceMock, times(0)).encryptAes((char[]) Mockito.anyObject());
 
         assertEquals("property remains", 1, props.size());
         assertTrue("key still exists", props.containsKey("key1"));
@@ -943,13 +957,377 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testGetSnapshots() {
-        // fail("Not yet implemented");
+    public void testGetSnapshots() throws KuraException {
+        // test that lower-level method (getSnapshotsInternal) is called; with no/null snapshot directory
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        Set<Long> snapshots = cs.getSnapshots();
+
+        assertNotNull("list is initialized", snapshots);
+        assertEquals("list is empty", 0, snapshots.size());
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
     }
 
     @Test
-    public void testGetSnapshot() {
-        // fail("Not yet implemented");
+    public void testGetSnapshotsInternalNullDir() throws Throwable {
+        // test with no/null snapshot directory
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        Set<Long> snapshots = (Set<Long>) TestUtil.invokePrivate(cs, "getSnapshotsInternal");
+
+        assertNotNull("list is initialized", snapshots);
+        assertEquals("list is empty", 0, snapshots.size());
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+    }
+
+    @Test
+    public void testGetSnapshotsInternalNotDir() throws Throwable {
+        // test with non-existing snapshot directory
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn("nonExistingDir");
+
+        Set<Long> snapshots = (Set<Long>) TestUtil.invokePrivate(cs, "getSnapshotsInternal");
+
+        assertNotNull("list is initialized", snapshots);
+        assertEquals("list is empty", 0, snapshots.size());
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+    }
+
+    @Test
+    public void testGetSnapshotsInternal() throws Throwable {
+        // test with existing and full snapshot directory
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        String dir = "existingDir";
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+
+        File f1 = new File(dir, "f1.xml");
+        File f2 = new File(dir, "snapshot2.xml");
+        File f3 = new File(dir, "snapshot_3.xml");
+        File f4 = new File(dir, "snapshot_4_.xml");
+        File f5 = new File(dir, "Snapshot_5.XML");
+
+        f1.createNewFile();
+        f2.createNewFile();
+        f3.createNewFile();
+        f4.createNewFile();
+        f5.createNewFile();
+
+        f1.deleteOnExit();
+        f2.deleteOnExit();
+        f3.deleteOnExit();
+        f4.deleteOnExit();
+        f5.deleteOnExit();
+
+        Set<Long> snapshots = (Set<Long>) TestUtil.invokePrivate(cs, "getSnapshotsInternal");
+
+        d1.delete();
+
+        assertNotNull("list is initialized", snapshots);
+        assertEquals("list has only so many pids", 1, snapshots.size());
+        assertEquals("expected pid", 3, (long) snapshots.iterator().next());
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+    }
+
+    /*
+     * FIXME: If directory in configuration is null => NPE.
+     */
+    @Test
+    public void testGetSnapshotFileNull() throws Throwable {
+        // test if it works with null directory
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        try {
+            TestUtil.invokePrivate(cs, "getSnapshotFile", 123);
+        } catch (NullPointerException e) {
+            // fail("Method result not checked.");
+        }
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+    }
+
+    @Test
+    public void testGetSnapshotFile() throws Throwable {
+        // verify that the file path and name are OK
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        String dir = "someDir";
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
+
+        File file = (File) TestUtil.invokePrivate(cs, "getSnapshotFile", 123);
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+
+        assertTrue("path pattern matches", file.getAbsolutePath().matches(".*someDir[/\\\\]snapshot_123.xml$"));
+    }
+
+    /*
+     * FIXME: check for null result
+     */
+    @Test
+    public void testGetSnapshotNullXmlCfgs() throws KuraException {
+        // test calling with null configurations list
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                XmlComponentConfigurations cfgs = null;
+                return cfgs;
+            }
+        };
+
+        long sid = 0;
+        try {
+            cs.getSnapshot(sid);
+        } catch (Exception e) {
+            // fail("Method result not checked.");
+        }
+    }
+
+    @Test
+    public void testGetSnapshotPasswordDecryptionException() throws KuraException {
+        // test password decryption failure - log only
+        final boolean[] calls = { false, false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                XmlComponentConfigurations cfgs = new XmlComponentConfigurations();
+                List<ComponentConfigurationImpl> configurations = new ArrayList<ComponentConfigurationImpl>();
+                cfgs.setConfigurations(configurations);
+
+                configurations.add(null);
+                ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
+                configurations.add(cfg);
+
+                calls[0] = true;
+
+                return cfgs;
+            }
+
+            @Override
+            Map<String, Object> decryptPasswords(ComponentConfiguration config) {
+                calls[1] = true;
+
+                throw new RuntimeException("test");
+            }
+        };
+
+        long sid = 0;
+        List<ComponentConfiguration> configs = null;
+        try {
+            configs = cs.getSnapshot(sid);
+        } catch (Exception e) {
+            fail("Exception not expected.");
+        }
+
+        assertTrue("config loaded", calls[0]);
+        assertTrue("passwords decrypted", calls[1]);
+        assertNotNull("configurations list exists", configs);
+        assertEquals("configurations list filled", 2, configs.size());
+        assertNull(configs.get(0));
+        assertNotNull(configs.get(1));
+    }
+
+    @Test
+    public void testGetSnapshot() throws KuraException {
+        // test successful run
+
+        final boolean[] calls = { false, false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            XmlComponentConfigurations loadEncryptedSnapshotFileContent(long snapshotID) throws KuraException {
+                XmlComponentConfigurations cfgs = new XmlComponentConfigurations();
+                List<ComponentConfigurationImpl> configurations = new ArrayList<ComponentConfigurationImpl>();
+                cfgs.setConfigurations(configurations);
+
+                configurations.add(null);
+                ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
+                configurations.add(cfg);
+
+                calls[0] = true;
+
+                return cfgs;
+            }
+
+            @Override
+            Map<String, Object> decryptPasswords(ComponentConfiguration config) {
+                calls[1] = true;
+                return config.getConfigurationProperties();
+            }
+        };
+
+        long sid = 0;
+        List<ComponentConfiguration> configs = cs.getSnapshot(sid);
+
+        assertTrue("config loaded", calls[0]);
+        assertTrue("passwords decrypted", calls[1]);
+        assertNotNull("configurations list exists", configs);
+        assertEquals("configurations list filled", 2, configs.size());
+        assertNull(configs.get(0));
+        assertNotNull(configs.get(1));
+    }
+
+    @Test
+    public void testLoadEncryptedSnapshotFileContentNoFile() throws KuraException {
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        long snapshotID = 123;
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        String dir = "someDir";
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
+
+        try {
+            cs.loadEncryptedSnapshotFileContent(snapshotID);
+
+            fail("Expected exception: file not found");
+        } catch (KuraException e) {
+            assertEquals("correct code", KuraErrorCode.CONFIGURATION_SNAPSHOT_NOT_FOUND, e.getCode());
+        }
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+    }
+
+    /*
+     * FIXME: If crypto service returned null when decrypting, it would crash.
+     */
+    @Test
+    public void testLoadEncryptedSnapshotFileContentNullDecrypt() throws KuraException, IOException {
+        // test decryption failure while loading an encrypted snapshot
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        long snapshotID = 123;
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        String dir = "someDir";
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_" + snapshotID + ".xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        when(cryptoServiceMock.decryptAes((char[]) anyObject())).thenReturn(null);
+
+        try {
+            cs.loadEncryptedSnapshotFileContent(snapshotID);
+        } catch (NullPointerException e) {
+            // fail("Decryption result not checked for null value.");
+        }
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+
+        f1.delete();
+        d1.delete();
+    }
+
+    @Test
+    public void testLoadEncryptedSnapshotFileContent() throws Exception {
+        // load an 'encrypted' snapshot file
+
+        // provide a test configuration
+        XmlComponentConfigurations cfgs = new XmlComponentConfigurations();
+        List<ComponentConfigurationImpl> cfglist = new ArrayList<ComponentConfigurationImpl>();
+        ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
+        cfg.setPid("123");
+        Map<String, Object> props = new HashMap<String, Object>();
+        props.put("pass", "pass");
+        cfg.setProperties(props);
+        Tocd definition = new Tocd();
+        definition.setDescription("description");
+        cfg.setDefinition(definition);
+        cfglist.add(cfg);
+        cfgs.setConfigurations(cfglist);
+
+        StringWriter w = new StringWriter();
+        XmlUtil.marshal(cfgs, w);
+        String decrypted = w.toString();
+        w.close();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        long snapshotID = 123;
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        String dir = "someDir";
+        when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_" + snapshotID + ".xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append("test");
+        fw.close();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        // ensure the proper file is read
+        when(cryptoServiceMock.decryptAes("test".toCharArray())).thenReturn(decrypted.toCharArray());
+
+        XmlComponentConfigurations configurations = cs.loadEncryptedSnapshotFileContent(snapshotID);
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
+        verify(cryptoServiceMock, times(1)).decryptAes("test".toCharArray());
+
+        f1.delete();
+        d1.delete();
+
+        assertNotNull("configurations object is returned", configurations);
+        assertNotNull("configurations list is returned", configurations.getConfigurations());
+        assertEquals("configurations list is not empty", 1, configurations.getConfigurations().size());
+
+        ComponentConfigurationImpl cfg1 = configurations.getConfigurations().get(0);
+        assertEquals("correct snapshot", "123", cfg1.getPid());
+        assertNotNull("configuration properties map is returned", cfg1.getConfigurationProperties());
+        assertEquals("configuration properties map is not empty", 1, cfg1.getConfigurationProperties().size());
     }
 
     @Test
