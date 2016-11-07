@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -27,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+
+import javax.xml.stream.XMLStreamException;
 
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
@@ -1013,11 +1016,12 @@ public class ConfigurationServiceTest {
         SystemService systemServiceMock = mock(SystemService.class);
         cs.setSystemService(systemServiceMock);
 
-        String dir = "existingDir";
+        String dir = "existingDirGSI";
         when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
 
         File d1 = new File(dir);
         d1.mkdirs();
+        d1.deleteOnExit();
 
         File f1 = new File(dir, "f1.xml");
         File f2 = new File(dir, "snapshot2.xml");
@@ -1039,6 +1043,11 @@ public class ConfigurationServiceTest {
 
         Set<Long> snapshots = (Set<Long>) TestUtil.invokePrivate(cs, "getSnapshotsInternal");
 
+        f1.delete();
+        f2.delete();
+        f3.delete();
+        f4.delete();
+        f5.delete();
         d1.delete();
 
         assertNotNull("list is initialized", snapshots);
@@ -1076,14 +1085,14 @@ public class ConfigurationServiceTest {
         SystemService systemServiceMock = mock(SystemService.class);
         cs.setSystemService(systemServiceMock);
 
-        String dir = "someDir";
+        String dir = "dirGSF";
         when(systemServiceMock.getKuraSnapshotsDirectory()).thenReturn(dir);
 
         File file = (File) TestUtil.invokePrivate(cs, "getSnapshotFile", 123);
 
         verify(systemServiceMock, times(1)).getKuraSnapshotsDirectory();
 
-        assertTrue("path pattern matches", file.getAbsolutePath().matches(".*someDir[/\\\\]snapshot_123.xml$"));
+        assertTrue("path pattern matches", file.getAbsolutePath().matches(".*dirGSF[/\\\\]snapshot_123.xml$"));
     }
 
     /*
@@ -1264,24 +1273,7 @@ public class ConfigurationServiceTest {
     public void testLoadEncryptedSnapshotFileContent() throws Exception {
         // load an 'encrypted' snapshot file
 
-        // provide a test configuration
-        XmlComponentConfigurations cfgs = new XmlComponentConfigurations();
-        List<ComponentConfigurationImpl> cfglist = new ArrayList<ComponentConfigurationImpl>();
-        ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
-        cfg.setPid("123");
-        Map<String, Object> props = new HashMap<String, Object>();
-        props.put("pass", "pass");
-        cfg.setProperties(props);
-        Tocd definition = new Tocd();
-        definition.setDescription("description");
-        cfg.setDefinition(definition);
-        cfglist.add(cfg);
-        cfgs.setConfigurations(cfglist);
-
-        StringWriter w = new StringWriter();
-        XmlUtil.marshal(cfgs, w);
-        String decrypted = w.toString();
-        w.close();
+        String decrypted = prepareSnapshotXML();
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
@@ -1501,13 +1493,314 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testEncryptPlainSnapshots() {
-        // TODO
+    public void testEncryptPlainSnapshotsNoFile() throws Throwable {
+        // snapshot file doesn't exist
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(234L);
+
+        String cfgxml = "";
+
+        final String dir = "snapshotDirEPSNF";
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return snapshotList;
+            }
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        try {
+            TestUtil.invokePrivate(cs, "encryptPlainSnapshots");
+            fail("Exception expected.");
+        } catch (KuraException e) {
+            assertEquals("exception code OK", KuraErrorCode.CONFIGURATION_SNAPSHOT_NOT_FOUND, e.getCode());
+        }
+    }
+
+    /*
+     * XXX: Corrupted configuration file propagates exception. Maybe that's OK, since is's a private method.
+     */
+    @Test
+    public void testEncryptPlainSnapshotsEmptyFile() throws Throwable {
+        // snapshot file is empty
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(123L);
+
+        String cfgxml = "";
+
+        final String dir = "snapshotDirEPSEF";
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_123.xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append(cfgxml);
+        fw.close();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return snapshotList;
+            }
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        try {
+            TestUtil.invokePrivate(cs, "encryptPlainSnapshots");
+        } catch (Exception e) {
+            // fail("Exception not caught beforehand.");
+            assertTrue("exception...", e instanceof XMLStreamException);
+        }
+
+        f1.delete();
+        d1.delete();
     }
 
     @Test
-    public void testWriteSnapshot() {
-        // TODO
+    public void testEncryptPlainSnapshots() throws Throwable {
+        // test that everything works
+
+        final Set<Long> snapshotList = new TreeSet<Long>();
+        snapshotList.add(223L);
+
+        // prepare a valid snapshot_123.xml
+        String cfgxml = prepareSnapshotXML();
+
+        final String dir = "snapshotDirEPS";
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_223.xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append(cfgxml);
+        fw.close();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return snapshotList;
+            }
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        KuraException exc = new KuraException(KuraErrorCode.STORE_ERROR);
+        String encCfg = "encrypted";
+        char[] encrypted = encCfg.toCharArray();
+        when(cryptoServiceMock.encryptAes((char[]) Mockito.anyObject())).thenReturn(encrypted);
+
+        TestUtil.invokePrivate(cs, "encryptPlainSnapshots");
+
+        verify(cryptoServiceMock, times(1)).encryptAes((char[]) Mockito.anyObject());
+
+        FileReader fr = new FileReader(f1);
+        char[] chars = new char[encCfg.length()];
+        int read = fr.read(chars);
+        fr.close();
+
+        assertEquals("proper length", encCfg.length(), read);
+        assertArrayEquals("proper encrypted contents", encrypted, chars);
+
+        f1.delete();
+        d1.delete();
+    }
+
+    private String prepareSnapshotXML() throws Exception, IOException {
+        XmlComponentConfigurations cfgs = prepareSnapshot();
+
+        StringWriter w = new StringWriter();
+        XmlUtil.marshal(cfgs, w);
+        String cfgxml = w.toString();
+        w.close();
+
+        return cfgxml;
+    }
+
+    private XmlComponentConfigurations prepareSnapshot() {
+        XmlComponentConfigurations cfgs = new XmlComponentConfigurations();
+
+        List<ComponentConfigurationImpl> cfglist = new ArrayList<ComponentConfigurationImpl>();
+        ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
+        cfg.setPid("123");
+        Map<String, Object> props = new HashMap<String, Object>();
+        props.put("pass", "pass");
+        cfg.setProperties(props);
+        Tocd definition = new Tocd();
+        definition.setDescription("description");
+        cfg.setDefinition(definition);
+        cfglist.add(cfg);
+        cfgs.setConfigurations(cfglist);
+
+        return cfgs;
+    }
+
+    @Test
+    public void testWriteSnapshotFileNotFile() throws Throwable {
+        // force a FileNotFound exception resulting in internal error KuraException
+
+        long sid = 323L;
+
+        XmlComponentConfigurations cfg = prepareSnapshot();
+
+        final String dir = "snapshotDirWSFNF";
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File d2 = new File(d1, "snapshot_" + sid + ".xml");
+        d2.mkdirs();
+        d2.deleteOnExit();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        String encCfg = "encrypted";
+        char[] encrypted = encCfg.toCharArray();
+        when(cryptoServiceMock.encryptAes((char[]) Mockito.anyObject())).thenReturn(encrypted);
+
+        try {
+            TestUtil.invokePrivate(cs, "writeSnapshot", sid, cfg);
+            fail("Exception expected due to 'file' being directory.");
+        } catch (KuraException e) {
+            assertEquals("Error code.", KuraErrorCode.INTERNAL_ERROR, e.getCode());
+        }
+
+        verify(cryptoServiceMock, times(1)).encryptAes((char[]) Mockito.anyObject());
+
+        d1.delete();
+        d2.delete();
+    }
+
+    @Test
+    public void testWriteSnapshot() throws Throwable {
+        // test the normal flow
+
+        long sid = 323L;
+
+        XmlComponentConfigurations cfg = prepareSnapshot();
+
+        final String dir = "snapshotDirWS";
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        String encCfg = "encrypted";
+        char[] encrypted = encCfg.toCharArray();
+        when(cryptoServiceMock.encryptAes((char[]) Mockito.anyObject())).thenReturn(encrypted);
+
+        TestUtil.invokePrivate(cs, "writeSnapshot", sid, cfg);
+
+        verify(cryptoServiceMock, times(1)).encryptAes((char[]) Mockito.anyObject());
+
+        File f1 = new File(d1, "snapshot_" + sid + ".xml");
+        f1.deleteOnExit();
+        assertTrue("snapshot file was created", f1.exists());
+
+        FileReader fr = new FileReader(f1);
+        char[] chars = new char[encCfg.length()];
+        int read = fr.read(chars);
+        fr.close();
+
+        assertEquals("proper length", encCfg.length(), read);
+        assertArrayEquals("proper encrypted contents", encrypted, chars);
+
+        f1.delete();
+        d1.delete();
+    }
+
+    @Test
+    public void testGarbageCollectionOldSnapshots() throws Throwable {
+        final String dir = "gcosDir";
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f0 = new File(dir, "snapshot_0.xml"); // special snapshot file
+        f0.createNewFile();
+        f0.deleteOnExit();
+        File f1 = new File(dir, "snapshot_121.xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+        File f2 = new File(dir, "snapshot_122.xml");
+        f2.createNewFile();
+        f2.deleteOnExit();
+        File f3 = new File(dir, "snapshot_123.xml");
+        f3.createNewFile();
+        f3.deleteOnExit();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        when(systemServiceMock.getKuraSnapshotsCount()).thenReturn(2);
+
+        TestUtil.invokePrivate(cs, "garbageCollectionOldSnapshots");
+
+        verify(systemServiceMock, times(1)).getKuraSnapshotsCount();
+
+        assertFalse("file deleted", f1.exists());
+        assertFalse("file deleted", f2.exists());
+        assertTrue("file not deleted", f0.exists());
+        assertTrue("file not deleted", f3.exists());
+
+        f0.delete();
+        f3.delete();
+        d1.delete();
     }
 
     @Test
