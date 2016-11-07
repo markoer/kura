@@ -1,53 +1,88 @@
 package org.eclipse.kura.core.testutil;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class TestUtil {
-	public static Object getFieldValue(Object svc, String fieldName) {
-		Object result = null;
-		Field field = null;
-		Class clazz = svc.getClass();
-		while (!(clazz == Object.class || field != null)) {
-			try {
-				field = clazz.getDeclaredField(fieldName);
-			} catch (NoSuchFieldException e) {
-				clazz = clazz.getSuperclass();
-				continue;
-			}
 
-			try {
-				field.setAccessible(true);
-				result = field.get(svc);
+    private static Field getField(Object svc, String fieldName) throws NoSuchFieldException {
+        Field field = null;
+        Class clazz = svc.getClass();
+        while (!(clazz == Object.class || field != null)) {
+            try {
+                field = clazz.getDeclaredField(fieldName);
+                break;
+            } catch (NoSuchFieldException e) {
+            }
+            clazz = clazz.getSuperclass();
+        }
 
-				break;
-			} catch (IllegalArgumentException e) {
-			    e.printStackTrace();
-			} catch (IllegalAccessException e) {
-			    e.printStackTrace();
-			}
-		}
+        if (field == null) {
+            throw new NoSuchFieldException("Field not found");
+        }
 
-		return result;
-	}
+        return field;
+    }
 
-	private static Field getField(Object svc, String fieldName) throws NoSuchFieldException {
-	    Field field = null;
-	    Class clazz = svc.getClass();
-	    while (!(clazz == Object.class || field != null)) {
-	        try {
-	            field = clazz.getDeclaredField(fieldName);
-	            break;
-	        } catch (NoSuchFieldException e) {
-	        }
-	        clazz = clazz.getSuperclass();
-	    }
+    public static Object getFieldValue(Object svc, String fieldName) {
+        Object result = null;
 
-	    if (field == null) {
-	        throw new NoSuchFieldException("Field not found");
-	    }
+        try {
+            Field field = getField(svc, fieldName);
+            field.setAccessible(true);
+            result = field.get(svc);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
 
-	    return field;
-	}
+        return result;
+    }
+
+    private static Method getMethod(Object svc, String methodName, Class... paramTypes) throws NoSuchMethodException {
+        Method method = null;
+        Class<?> clazz = svc.getClass();
+        hwile: while (!(clazz == Object.class || method != null)) {
+            // method = clazz.getDeclaredMethod(methodName);
+            Method[] methods = clazz.getDeclaredMethods();
+            for (Method m : methods) {
+                if (m.getName().compareTo(methodName) == 0) {
+                    method = m;
+                    break hwile;
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+
+        if (method == null) {
+            throw new NoSuchMethodException("Method not found");
+        }
+
+        return method;
+    }
+
+    public static Object invokePrivate(Object svc, String methodName, Object... params) throws Throwable {
+        Method method = getMethod(svc, methodName);
+
+        method.setAccessible(true);
+
+        try {
+            Object result = method.invoke(svc, params);
+            return result;
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            throw e.getCause();
+        }
+
+        return null;
+    }
 
     public static void setFieldValue(Object svc, String fieldName, Object value) throws NoSuchFieldException {
         Field field = getField(svc, fieldName);

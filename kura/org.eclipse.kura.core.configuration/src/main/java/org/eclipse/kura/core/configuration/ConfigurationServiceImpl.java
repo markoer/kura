@@ -390,7 +390,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
     @Override
     public ComponentConfiguration getDefaultComponentConfiguration(String pid) throws KuraException {
         Tocd ocd = getOCDForPid(pid);
-        Map<String, Object> props = ComponentUtil.getDefaultProperties(ocd, this.m_ctx);
+        Map<String, Object> props = getDefaultProperties(ocd);
         return new ComponentConfigurationImpl(pid, ocd, props);
     }
 
@@ -543,7 +543,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
                             Bundle bundle = ref.getBundle();
                             try {
                                 OCD ocd = ComponentUtil.readObjectClassDefinition(bundle, pid);
-                                Map<String, Object> defaults = ComponentUtil.getDefaultProperties(ocd, this.m_ctx);
+                                Map<String, Object> defaults = getDefaultProperties(ocd);
                                 rollbackConfigurationInternal(pid, defaults, snapshotOnConfirmation);
                             } catch (Throwable t) {
                                 s_logger.warn("Error during rollback for component " + pid, t);
@@ -675,7 +675,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         boolean changed = false;
         Set<String> keys = properties.keySet();
 
-        Map<String, Object> defaults = ComponentUtil.getDefaultProperties(ocd, this.m_ctx);
+        Map<String, Object> defaults = getDefaultProperties(ocd);
         Set<String> defaultsKeys = defaults.keySet();
 
         defaultsKeys.removeAll(keys);
@@ -692,6 +692,10 @@ public class ConfigurationServiceImpl implements ConfigurationService {
             }
         }
         return changed;
+    }
+
+    Map<String, Object> getDefaultProperties(OCD ocd) throws KuraException {
+        return ComponentUtil.getDefaultProperties(ocd, this.m_ctx);
     }
 
     Map<String, Object> decryptPasswords(ComponentConfiguration config) {
