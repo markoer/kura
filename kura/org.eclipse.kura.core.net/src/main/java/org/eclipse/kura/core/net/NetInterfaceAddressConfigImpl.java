@@ -26,7 +26,7 @@ public class NetInterfaceAddressConfigImpl extends NetInterfaceAddressImpl imple
     }
 
     public NetInterfaceAddressConfigImpl(NetInterfaceAddress other) {
-        super(other); // TODO: shouldn't this also copy the configs?
+        super(other);
     }
 
     @Override

@@ -182,7 +182,7 @@ public class NetInterfaceAddressConfigImplTest {
 	}
 	
 	@Test
-	public void testNetInterfaceAddressConfigImplDefault() {
+	public void testNetInterfaceAddressConfigImpl() {
 		NetInterfaceAddressConfigImpl value = new NetInterfaceAddressConfigImpl();
 		
 		assertNull(value.getAddress());
@@ -194,7 +194,7 @@ public class NetInterfaceAddressConfigImplTest {
 	}
 
 	@Test
-	public void testNetInterfaceAddressConfigImplFromAddress() {
+	public void testNetInterfaceAddressConfigImplNetInterfaceAddress() {
 		try {
 			ArrayList<IPAddress> dnsServers = new ArrayList<IPAddress>();
 			dnsServers.add(IPAddress.parseHostAddress("10.0.1.1"));
