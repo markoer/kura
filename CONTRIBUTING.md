@@ -49,11 +49,14 @@ You can find all the details in the [Contributing via Git](http://wiki.eclipse.o
 * Make your changes
 * Make sure you include test cases for non-trivial features
 * Make sure the test suite passes after your changes
+* Make sure copyright headers are included in (all) files
+* Make sure build plugins and dependencies and their versions have (approved) CQs
 * Commit your changes into that branch
 * Use descriptive and meaningful commit messages
 * If you have a lot of commits squash them into a single commit
 * Make sure you use the `-s` flag when committing as explained above
 * Push your changes to your branch in your forked repository
+* Before issuing a pull request make a full clean build
 
 ## Submitting the Changes
 
