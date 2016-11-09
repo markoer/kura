@@ -2365,7 +2365,8 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfiguration() {
+    public void testRegisterComponentConfigurationAllNulls() {
+        // only null inputs
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
         String pid = null;
@@ -2374,7 +2375,168 @@ public class ConfigurationServiceTest {
 
         cs.registerComponentConfiguration(pid, servicePid, factoryPid);
 
-        // TODO: add checks
+        // no checks really possible...
+    }
+
+    @Test
+    public void testRegisterComponentConfigurationPreActivated() {
+        // pid is already activated, so it's not added to service pids
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        String pid = "pid";
+        String servicePid = "spid";
+        String factoryPid = null;
+
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        allPids.add(pid);
+
+        Map<String, String> sPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
+        assertEquals("spid size OK", 0, sPids.size());
+
+        cs.registerComponentConfiguration(pid, servicePid, factoryPid);
+
+        assertEquals("size still OK", 0, sPids.size());
+    }
+
+    @Test
+    public void testRegisterComponentConfigurationActivateNoFactory() {
+        // not activated, but no factory pid available => add to service and activated pids
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        String pid = "pid";
+        String servicePid = "spid";
+        String factoryPid = null;
+
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        assertEquals("active pids size OK", 0, allPids.size());
+
+        Map<String, String> sPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
+        assertEquals("spid size OK", 0, sPids.size());
+
+        cs.registerComponentConfiguration(pid, servicePid, factoryPid);
+
+        assertEquals("size still OK", 1, sPids.size());
+        assertEquals("spid in there", servicePid, sPids.get(pid));
+
+        assertEquals("active size increased", 1, allPids.size());
+        assertTrue("spid active", allPids.contains(pid));
+    }
+
+    @Test
+    public void testRegisterComponentConfigurationWithFactoryPid() {
+        // add also factory PID, but no OCD mapped
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        String pid = "pid";
+        String servicePid = "spid";
+        String factoryPid = "fpid";
+
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        assertEquals("active pids size OK", 0, allPids.size());
+
+        Map<String, String> sPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
+        assertEquals("spid size OK", 0, sPids.size());
+
+        Map<String, String> fPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_factoryPidByPid");
+        assertEquals("fpid size OK", 0, fPids.size());
+
+        cs.registerComponentConfiguration(pid, servicePid, factoryPid);
+
+        assertEquals("size still OK", 1, sPids.size());
+        assertEquals("spid in there", servicePid, sPids.get(pid));
+
+        assertEquals("active size increased", 1, allPids.size());
+        assertTrue("spid active", allPids.contains(pid));
+
+        assertEquals("factory size increased", 1, fPids.size());
+        assertEquals("fpid in there", factoryPid, fPids.get(pid));
+    }
+
+    @Test
+    public void testRegisterComponentConfigurationConfigException() throws IOException {
+        // test exception in cfgadmin
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        String pid = "pid";
+        String servicePid = "spid";
+        String factoryPid = "fpid";
+
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        assertEquals("active pids size OK", 0, allPids.size());
+
+        Map<String, String> sPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
+        assertEquals("spid size OK", 0, sPids.size());
+
+        Map<String, String> fPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_factoryPidByPid");
+        assertEquals("fpid size OK", 0, fPids.size());
+
+        Map<String, Tocd> ocds = (Map<String, Tocd>) TestUtil.getFieldValue(cs, "m_ocds");
+        Tocd ocd = new Tocd();
+        ocds.put(factoryPid, ocd);
+
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
+        cs.setConfigurationAdmin(configAdminMock);
+
+        when(configAdminMock.getConfiguration(servicePid, "?")).thenThrow(new IOException("test"));
+
+        cs.registerComponentConfiguration(pid, servicePid, factoryPid);
+
+        verify(configAdminMock, times(1)).getConfiguration(servicePid, "?");
+
+        assertEquals("size still OK", 1, sPids.size());
+        assertEquals("spid in there", servicePid, sPids.get(pid));
+
+        assertEquals("active size increased", 1, allPids.size());
+        assertTrue("spid active", allPids.contains(pid));
+
+        assertEquals("factory size increased", 1, fPids.size());
+        assertEquals("fpid in there", factoryPid, fPids.get(pid));
+    }
+
+    @Test
+    public void testRegisterComponentConfiguration() throws IOException {
+        // check that updateWithDefaultConfiguration is called successfully
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        String pid = "pid";
+        String servicePid = "spid";
+        String factoryPid = "fpid";
+
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        assertEquals("active pids size OK", 0, allPids.size());
+
+        Map<String, String> sPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_servicePidByPid");
+        assertEquals("spid size OK", 0, sPids.size());
+
+        Map<String, String> fPids = (Map<String, String>) TestUtil.getFieldValue(cs, "m_factoryPidByPid");
+        assertEquals("fpid size OK", 0, fPids.size());
+
+        Map<String, Tocd> ocds = (Map<String, Tocd>) TestUtil.getFieldValue(cs, "m_ocds");
+        Tocd ocd = new Tocd();
+        ocds.put(factoryPid, ocd);
+
+        ConfigurationAdmin configAdminMock = mock(ConfigurationAdmin.class);
+        cs.setConfigurationAdmin(configAdminMock);
+
+        when(configAdminMock.getConfiguration(servicePid, "?")).thenReturn(null);
+
+        cs.registerComponentConfiguration(pid, servicePid, factoryPid);
+
+        verify(configAdminMock, times(1)).getConfiguration(servicePid, "?");
+
+        assertEquals("size still OK", 1, sPids.size());
+        assertEquals("spid in there", servicePid, sPids.get(pid));
+
+        assertEquals("active size increased", 1, allPids.size());
+        assertTrue("spid active", allPids.contains(pid));
+
+        assertEquals("factory size increased", 1, fPids.size());
+        assertEquals("fpid in there", factoryPid, fPids.get(pid));
     }
 
     @Test
