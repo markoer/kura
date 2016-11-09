@@ -340,11 +340,15 @@ public class WifiAccessPointImplTest {
 	@Test
 	public void testEqualsObject() {
 		try {
-			WifiAccessPointImpl a = createWifiAccessPoint();
-			assertEquals(a, a);
+			WifiAccessPointImpl ap1 = createWifiAccessPoint();
+			assertEquals(ap1, ap1);
 			
-			WifiAccessPointImpl b = createWifiAccessPoint();
-			assertEquals(a, b);
+			WifiAccessPointImpl ap2 = createWifiAccessPoint();
+			assertEquals(ap1, ap2);
+			
+			ap1 = new WifiAccessPointImpl("ssid");
+			ap2 = new WifiAccessPointImpl("ssid");
+			assertEquals(ap1, ap2);
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
@@ -353,10 +357,10 @@ public class WifiAccessPointImplTest {
 	@Test
 	public void testEqualsWithNull() {
 		try {
-			WifiAccessPointImpl a = createWifiAccessPoint();
-			WifiAccessPointImpl b = null;
+			WifiAccessPointImpl ap1 = createWifiAccessPoint();
+			WifiAccessPointImpl ap2 = null;
 			
-			assertNotEquals(a, b);
+			assertNotEquals(ap1, ap2);
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
@@ -365,20 +369,163 @@ public class WifiAccessPointImplTest {
 	@Test
 	public void testEqualsUnexpectedType() {
 		try {
-			WifiAccessPointImpl a = createWifiAccessPoint();
-			String b = "";
+			WifiAccessPointImpl ap1 = createWifiAccessPoint();
+			String str = "";
 			
-			assertNotEquals(a, b);
+			assertNotEquals(ap1, str);
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
 	}
+
+	@Test
+	public void testEqualsDifferentSSID() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid1");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid2");
+
+		assertNotEquals(ap1, ap2);
+
+		ap1 = new WifiAccessPointImpl(null);
+
+		assertNotEquals(ap1, ap2);
+
+		ap1.setStrength(42);
+		ap2 = new WifiAccessPointImpl(null);
+
+		assertNotEquals(ap1, ap2);
+	}
 	
+	@Test
+	public void testEqualsDifferentHardwareAddress() {
+		try {
+			WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+			WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+			byte[] mac1 = NetworkUtil.macToBytes("12:34:56:78:90:AB");
+			byte[] mac2 = NetworkUtil.macToBytes("11:22:33:44:55:66");
+
+			ap1.setHardwareAddress(mac1);
+			ap2.setHardwareAddress(mac2);
+
+			assertNotEquals(ap1, ap2);
+
+			ap1.setHardwareAddress(null);
+
+			assertNotEquals(ap1, ap2);
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testEqualsDifferentFrequency() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ap1.setFrequency(42);
+		ap2.setFrequency(100);
+
+		assertNotEquals(ap1, ap2);
+	}
 	
+	@Test
+	public void testEqualsDifferentMode() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ap1.setMode(WifiMode.ADHOC);
+		ap2.setMode(WifiMode.INFRA);
+
+		assertNotEquals(ap1, ap2);
+	}
 	
-	
-	
-	
+	@Test
+	public void testEqualsDifferentBitrate() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ArrayList<Long> bitrate1 = new ArrayList<Long>();
+		bitrate1.add((long) 1);
+		bitrate1.add((long) 2);
+
+		ArrayList<Long> bitrate2 = new ArrayList<Long>();
+		bitrate2.add((long) 3);
+		bitrate2.add((long) 4);
+		
+		ap1.setBitrate(bitrate1);
+		ap2.setBitrate(bitrate2);
+
+		assertNotEquals(ap1, ap2);
+
+		ap1.setBitrate(null);
+
+		assertNotEquals(ap1, ap2);
+	}
+
+	@Test
+	public void testEqualsDifferentStrength() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ap1.setStrength(42);
+		ap2.setStrength(100);
+
+		assertNotEquals(ap1, ap2);
+	}
+
+	@Test
+	public void testEqualsDifferentWpaSecurity() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ap1.setWpaSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.GROUP_TKIP));
+		ap2.setWpaSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.GROUP_WEP104));
+
+		assertNotEquals(ap1, ap2);
+
+		ap1.setWpaSecurity(null);
+
+		assertNotEquals(ap1, ap2);
+	}
+
+	@Test
+	public void testEqualsDifferentRsnSecurity() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ap1.setRsnSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.GROUP_TKIP));
+		ap2.setRsnSecurity(EnumSet.of(WifiSecurity.GROUP_CCMP, WifiSecurity.GROUP_WEP104));
+
+		assertNotEquals(ap1, ap2);
+
+		ap1.setRsnSecurity(null);
+
+		assertNotEquals(ap1, ap2);
+	}
+
+	@Test
+	public void testEqualsDifferentCapabilities() {
+		WifiAccessPointImpl ap1 = new WifiAccessPointImpl("ssid");
+		WifiAccessPointImpl ap2 = new WifiAccessPointImpl("ssid");
+
+		ArrayList<String> capabilities1 = new ArrayList<String>();
+		capabilities1.add("a");
+		capabilities1.add("b");
+
+		ArrayList<String> capabilities2 = new ArrayList<String>();
+		capabilities2.add("c");
+		capabilities2.add("d");
+		
+		ap1.setCapabilities(capabilities1);
+		ap2.setCapabilities(capabilities2);
+
+		assertNotEquals(ap1, ap2);
+
+		ap1.setCapabilities(null);
+
+		assertNotEquals(ap1, ap2);
+	}
+
 	WifiAccessPointImpl createWifiAccessPoint() throws KuraException {
 		WifiAccessPointImpl ap = new WifiAccessPointImpl("ssid");
 
