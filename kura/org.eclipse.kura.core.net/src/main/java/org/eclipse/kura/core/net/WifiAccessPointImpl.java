@@ -119,7 +119,8 @@ public class WifiAccessPointImpl implements WifiAccessPoint {
         StringBuilder sb = new StringBuilder();
         sb.append("ssid=").append(this.ssid);
         try {
-            sb.append(" :: hardwareAddress=").append(NetworkUtil.macToString(this.hardwareAddress));
+        	String mac = NetworkUtil.macToString(this.hardwareAddress);
+            sb.append(" :: hardwareAddress=").append(mac);
         } catch (KuraException e) {
             // Hardware address is invalid, do not append it
         }
@@ -143,6 +144,9 @@ public class WifiAccessPointImpl implements WifiAccessPoint {
                 sb.append(security).append(" ");
             }
         }
+        
+        // TODO: add also capabilities?
+        
         return sb.toString();
     }
     
