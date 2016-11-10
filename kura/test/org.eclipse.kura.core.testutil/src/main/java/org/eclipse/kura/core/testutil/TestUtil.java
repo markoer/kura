@@ -57,8 +57,20 @@ public class TestUtil {
         hwile: while (!(clazz == Object.class || method != null)) {
             // method = clazz.getDeclaredMethod(methodName);
             Method[] methods = clazz.getDeclaredMethods();
-            for (Method m : methods) {
+            methods: for (Method m : methods) {
                 if (m.getName().compareTo(methodName) == 0) {
+                    if (paramTypes.length > 0) {
+                        if (m.getParameterCount() != paramTypes.length) {
+                            continue;
+                        }
+                        Class<?>[] foundParamTypes = m.getParameterTypes();
+                        for (int i = 0; i < foundParamTypes.length; i++) {
+                            if (foundParamTypes[i] != paramTypes[i]) {
+                                continue methods;
+                            }
+                        }
+                    }
+
                     method = m;
                     break hwile;
                 }
@@ -71,6 +83,26 @@ public class TestUtil {
         }
 
         return method;
+    }
+
+    public static Object invokePrivate(Object svc, String methodName, Class<?>[] paramTypes, Object... params)
+            throws Throwable {
+        Method method = getMethod(svc, methodName, paramTypes);
+
+        method.setAccessible(true);
+
+        try {
+            Object result = method.invoke(svc, params);
+            return result;
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            throw e.getCause();
+        }
+
+        return null;
     }
 
     public static Object invokePrivate(Object svc, String methodName, Object... params) throws Throwable {

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
+import org.eclipse.kura.KuraPartialSuccessException;
 import org.eclipse.kura.configuration.ComponentConfiguration;
 import org.eclipse.kura.configuration.ConfigurationService;
 import org.eclipse.kura.configuration.Password;
@@ -57,8 +59,14 @@ import org.junit.runners.MethodSorters;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.service.component.ComponentContext;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ConfigurationServiceTest {
@@ -664,7 +672,6 @@ public class ConfigurationServiceTest {
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
 
-            @Override
             Map<String, Object> getDefaultProperties(OCD ocd) throws KuraException {
                 return props;
             }
@@ -950,23 +957,128 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testUpdateConfigurationStringMapOfStringObject() {
-        // TODO: Not yet implemented
+    public void testUpdateConfigurationStringMapOfStringObject() throws Throwable {
+        // test delegation
+
+        final String pid = "pid";
+        final Map<String, Object> properties = new HashMap<String, Object>();
+
+        final boolean[] calls = { false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            public synchronized void updateConfiguration(String pidToUpdate,
+                    java.util.Map<String, Object> propertiesToUpdate, boolean takeSnapshot) throws KuraException {
+
+                calls[0] = true;
+
+                assertEquals("pid matches", pid, pidToUpdate);
+                assertEquals("properties match", properties, propertiesToUpdate);
+            }
+        };
+
+        Class<?>[] types = { String.class, Map.class };
+
+        cs.updateConfiguration(pid, properties);
+
+        assertTrue("method called", calls[0]);
     }
 
     @Test
-    public void testUpdateConfigurationStringMapOfStringObjectBoolean() {
-        // TODO: Not yet implemented
+    public void testUpdateConfigurationStringMapOfStringObjectBoolean() throws Throwable {
+        // test delegation
+
+        final String pid = "pid";
+        final Map<String, Object> propertiesToUpdate = new HashMap<String, Object>();
+
+        final boolean[] calls = { false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public synchronized void updateConfigurations(List<ComponentConfiguration> configsToUpdate,
+                    boolean takeSnapshot) throws KuraException {
+
+                calls[0] = true;
+
+                assertEquals("one configuration added", 1, configsToUpdate.size());
+
+                ComponentConfiguration cfg = configsToUpdate.get(0);
+                assertNotNull("new config initialized", cfg);
+                assertEquals("pid matches", pid, cfg.getPid());
+                assertEquals("properties match", propertiesToUpdate, cfg.getConfigurationProperties());
+
+                assertTrue("take snapshot - true", takeSnapshot);
+            }
+        };
+
+        Class<?>[] types = { String.class, Map.class, boolean.class };
+
+        cs.updateConfiguration(pid, propertiesToUpdate, true);
+
+        assertTrue("method called", calls[0]);
     }
 
     @Test
-    public void testUpdateConfigurationsListOfComponentConfiguration() {
-        // TODO: Not yet implemented
+    public void testUpdateConfigurationsListOfComponentConfiguration() throws KuraException {
+        // test delegation
+
+        final List<ComponentConfiguration> configs = new ArrayList<ComponentConfiguration>();
+
+        final boolean[] calls = { false };
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public synchronized void updateConfigurations(List<ComponentConfiguration> configsToUpdate,
+                    boolean takeSnapshot) throws KuraException {
+
+                calls[0] = true;
+
+                assertEquals("list", configs, configsToUpdate);
+
+                assertTrue("take snapshot - true", takeSnapshot);
+            }
+        };
+
+        cs.updateConfigurations(configs);
+
+        assertTrue("method called", calls[0]);
     }
 
     @Test
-    public void testUpdateConfigurationsListOfComponentConfigurationBoolean() {
-        //// TODO: Not yet implemented
+    public void testUpdateConfigurationsListOfComponentConfigurationBoolean()
+            throws KuraException, NoSuchFieldException {
+        // test that password encryption is attempted (but decrypt doesn't fail, which is OK) and some other calls are
+        // made - stop with usage of m_allActivatedPids in getComponentConfigurationsInternal
+
+        boolean takeSnapshot = false;
+        final List<ComponentConfiguration> configs = new ArrayList<ComponentConfiguration>();
+        configs.add(null);
+        ComponentConfigurationImpl cfg = new ComponentConfigurationImpl();
+        Map<String, Object> props = new HashMap<String, Object>();
+        cfg.setProperties(props);
+        props.put("pass", new Password("pass"));
+        configs.add(cfg);
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        when(cryptoServiceMock.decryptAes((char[]) anyObject())).thenReturn("dec".toCharArray());
+
+        // make updateConfigurationsInternal fail with NPE
+        TestUtil.setFieldValue(cs, "m_allActivatedPids", null);
+
+        try {
+            cs.updateConfigurations(configs, takeSnapshot);
+            fail("Exception expected");
+        } catch (NullPointerException e) {
+            // OK
+        }
+
+        verify(cryptoServiceMock, times(1)).decryptAes((char[]) anyObject());
     }
 
     @Test
@@ -2540,13 +2652,391 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRollback() {
-        // TODO: Not yet implemented
+    public void testRollbackNoPids() throws KuraException {
+        // test rollback with no available shapshots - failure
+
+        final boolean[] calls = { false };
+        final Set<Long> pids = new HashSet<Long>();
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return pids;
+            }
+
+            @Override
+            public synchronized void rollback(long id) throws KuraException {
+                calls[0] = true;
+            }
+        };
+
+        try {
+            cs.rollback();
+            fail("Exception expected with < 2 pids.");
+        } catch (KuraException e) {
+            assertEquals("code matches", KuraErrorCode.CONFIGURATION_SNAPSHOT_NOT_FOUND, e.getCode());
+        }
     }
 
     @Test
-    public void testRollbackLong() {
-        // TODO: Not yet implemented
+    public void testRollbackOnePid() throws KuraException {
+        // test rollback with one available shapshot - failure
+
+        final boolean[] calls = { false };
+        final Set<Long> pids = new HashSet<Long>();
+        pids.add(123L);
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return pids;
+            }
+
+            @Override
+            public synchronized void rollback(long id) throws KuraException {
+                calls[0] = true;
+            }
+        };
+
+        try {
+            cs.rollback();
+            fail("Exception expected with < 2 pids.");
+        } catch (KuraException e) {
+            assertEquals("code matches", KuraErrorCode.CONFIGURATION_SNAPSHOT_NOT_FOUND, e.getCode());
+        }
+    }
+
+    @Test
+    public void testRollbackTwoPids() throws KuraException {
+        // test rollback with 2 pids - OK
+        final boolean[] calls = { false };
+        final long pid = 123;
+        final Set<Long> pids = new HashSet<Long>();
+        pids.add(pid);
+        pids.add(124L);
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return pids;
+            }
+
+            @Override
+            public synchronized void rollback(long id) throws KuraException {
+                calls[0] = true;
+
+                assertEquals("correct pid", pid, id);
+            }
+        };
+
+        cs.rollback();
+
+        assertTrue("delegated", calls[0]);
+    }
+
+    @Test
+    public void testRollback() throws KuraException {
+        // test rollback with more than 2 pids
+
+        final boolean[] calls = { false };
+        final long pid = 123;
+        final Set<Long> pids = new HashSet<Long>();
+        pids.add(121L);
+        pids.add(122L);
+        pids.add(pid);
+        pids.add(124L);
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            public Set<Long> getSnapshots() throws KuraException {
+                return pids;
+            }
+
+            @Override
+            public synchronized void rollback(long id) throws KuraException {
+                calls[0] = true;
+
+                assertEquals("correct pid", pid, id);
+            }
+        };
+
+        cs.rollback();
+
+        assertTrue("delegated", calls[0]);
+    }
+
+    @Test
+    public void testRollbackIdPartialSvcRef() throws Exception {
+        long id = 123;
+        final String dir = "dirRIPSR";
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_" + id + ".xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append("test");
+        fw.close();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        String decrypted = prepareSnapshotXML();
+        when(cryptoServiceMock.decryptAes("test".toCharArray())).thenReturn(decrypted.toCharArray());
+
+        when(cryptoServiceMock.encryptAes((char[]) anyObject())).thenReturn("encrypted".toCharArray());
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        when(systemServiceMock.getKuraSnapshotsCount()).thenReturn(5);
+
+        String pid = "pid";
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        allPids.add(pid);
+
+        ComponentContext componentCtxMock = mock(ComponentContext.class);
+        TestUtil.setFieldValue(cs, "m_ctx", componentCtxMock);
+
+        BundleContext bundleCtxMock = mock(BundleContext.class);
+        when(componentCtxMock.getBundleContext()).thenReturn(bundleCtxMock);
+
+        ServiceReference svcRefMock = mock(ServiceReference.class);
+        ServiceReference[] svcReferences = { svcRefMock };
+        when(bundleCtxMock.getServiceReferences((String) null, null))
+                .thenThrow(new InvalidSyntaxException("test", null));
+
+        cs.rollback(id);
+
+        verify(cryptoServiceMock, times(1)).decryptAes("test".toCharArray());
+        verify(cryptoServiceMock, times(1)).encryptAes((char[]) anyObject());
+        verify(systemServiceMock, times(1)).getKuraSnapshotsCount();
+
+        File[] files = d1.listFiles();
+
+        assertEquals(2, files.length);
+
+        for (File f : files) {
+            f.deleteOnExit();
+        }
+        String expect = "test";
+
+        FileReader fr = new FileReader(files[0]);
+        char[] chars = new char[expect.length()];
+        int read = fr.read(chars);
+        fr.close();
+
+        assertEquals(expect, new String(chars));
+
+        expect = "encrypted";
+
+        fr = new FileReader(files[1]);
+        chars = new char[expect.length()];
+        read = fr.read(chars);
+        fr.close();
+
+        assertEquals(expect, new String(chars));
+    }
+
+    @Test
+    public void testRollbackIdPartial() throws Exception {
+        long id = 123;
+        final String dir = "dirRIP";
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_" + id + ".xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append("test");
+        fw.close();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        String decrypted = prepareSnapshotXML();
+        when(cryptoServiceMock.decryptAes("test".toCharArray())).thenReturn(decrypted.toCharArray());
+
+        when(cryptoServiceMock.encryptAes((char[]) anyObject())).thenReturn("encrypted".toCharArray());
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        when(systemServiceMock.getKuraSnapshotsCount()).thenReturn(5);
+
+        String pid = "pid";
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        allPids.add(pid);
+
+        ComponentContext componentCtxMock = mock(ComponentContext.class);
+        TestUtil.setFieldValue(cs, "m_ctx", componentCtxMock);
+
+        BundleContext bundleCtxMock = mock(BundleContext.class);
+        when(componentCtxMock.getBundleContext()).thenReturn(bundleCtxMock);
+
+        ServiceReference svcRefMock = mock(ServiceReference.class);
+        ServiceReference[] svcReferences = { svcRefMock };
+        when(bundleCtxMock.getServiceReferences((String) null, null)).thenReturn(svcReferences);
+
+        String ppid = pid;
+        when(svcRefMock.getProperty(Constants.SERVICE_PID)).thenReturn(ppid);
+
+        Bundle bundleMock = mock(Bundle.class);
+        when(svcRefMock.getBundle()).thenReturn(bundleMock);
+
+        when(bundleMock.getResource(Mockito.anyString())).thenThrow(new NullPointerException("test"));
+
+        try {
+            cs.rollback(id);
+            fail("Rigged for exception.");
+        } catch (KuraPartialSuccessException e) {
+            // OK
+        }
+
+        verify(cryptoServiceMock, times(1)).decryptAes("test".toCharArray());
+        // verify(cryptoServiceMock, times(1)).encryptAes((char[]) anyObject());
+        // verify(systemServiceMock, times(1)).getKuraSnapshotsCount();
+
+        File[] files = d1.listFiles();
+
+        assertEquals(1, files.length);
+
+        for (File f : files) {
+            f.deleteOnExit();
+        }
+        String expect = "test";
+
+        FileReader fr = new FileReader(files[0]);
+        char[] chars = new char[expect.length()];
+        int read = fr.read(chars);
+        fr.close();
+
+        assertEquals(expect, new String(chars));
+    }
+
+    @Test
+    public void testRollbackId() throws Exception {
+        long id = 123;
+        final String dir = "dirRI";
+
+        ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
+
+            @Override
+            String getSnapshotsDirectory() {
+                return dir;
+            }
+        };
+
+        File d1 = new File(dir);
+        d1.mkdirs();
+        d1.deleteOnExit();
+
+        File f1 = new File(dir, "snapshot_" + id + ".xml");
+        f1.createNewFile();
+        f1.deleteOnExit();
+
+        FileWriter fw = new FileWriter(f1);
+        fw.append("test");
+        fw.close();
+
+        CryptoService cryptoServiceMock = mock(CryptoService.class);
+        cs.setCryptoService(cryptoServiceMock);
+
+        String decrypted = prepareSnapshotXML();
+        when(cryptoServiceMock.decryptAes("test".toCharArray())).thenReturn(decrypted.toCharArray());
+
+        when(cryptoServiceMock.encryptAes((char[]) anyObject())).thenReturn("encrypted".toCharArray());
+
+        SystemService systemServiceMock = mock(SystemService.class);
+        cs.setSystemService(systemServiceMock);
+
+        when(systemServiceMock.getKuraSnapshotsCount()).thenReturn(5);
+
+        String pid = "pid";
+        Set<String> allPids = (Set<String>) TestUtil.getFieldValue(cs, "m_allActivatedPids");
+        allPids.add(pid);
+
+        ComponentContext componentCtxMock = mock(ComponentContext.class);
+        TestUtil.setFieldValue(cs, "m_ctx", componentCtxMock);
+
+        BundleContext bundleCtxMock = mock(BundleContext.class);
+        when(componentCtxMock.getBundleContext()).thenReturn(bundleCtxMock);
+
+        ServiceReference svcRefMock = mock(ServiceReference.class);
+        ServiceReference[] svcReferences = { svcRefMock };
+        when(bundleCtxMock.getServiceReferences((String) null, null)).thenReturn(svcReferences);
+
+        String ppid = pid;
+        when(svcRefMock.getProperty(Constants.SERVICE_PID)).thenReturn(ppid);
+
+        Bundle bundleMock = mock(Bundle.class);
+        when(svcRefMock.getBundle()).thenReturn(bundleMock);
+
+        when(bundleMock.getResource(Mockito.anyString())).thenReturn(null);
+
+        cs.rollback(id);
+
+        verify(cryptoServiceMock, times(1)).decryptAes("test".toCharArray());
+        verify(cryptoServiceMock, times(1)).encryptAes((char[]) anyObject());
+        verify(systemServiceMock, times(1)).getKuraSnapshotsCount();
+
+        File[] files = d1.listFiles();
+
+        assertEquals(2, files.length);
+
+        for (File f : files) {
+            f.deleteOnExit();
+        }
+        String expect = "test";
+
+        FileReader fr = new FileReader(files[0]);
+        char[] chars = new char[expect.length()];
+        int read = fr.read(chars);
+        fr.close();
+
+        assertEquals(expect, new String(chars));
+
+        expect = "encrypted";
+
+        fr = new FileReader(files[1]);
+        chars = new char[expect.length()];
+        read = fr.read(chars);
+        fr.close();
+
+        assertEquals(expect, new String(chars));
+    }
+
+    @Test
+    public void testRollbackConfigurationInternal() {
+        // TODO
     }
 
 }
