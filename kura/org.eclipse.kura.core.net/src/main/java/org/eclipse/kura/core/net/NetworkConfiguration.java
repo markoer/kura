@@ -185,10 +185,21 @@ public class NetworkConfiguration {
 
         s_logger.trace("Adding a netConfig: {}", netConfig);
         for (NetInterfaceAddressConfig netInterfaceAddressConfig : netInterfaceAddressConfigs) {
-            NetInterfaceAddressConfigImpl netInterfaceAddressConfigImpl = (NetInterfaceAddressConfigImpl) netInterfaceAddressConfig;
-            List<NetConfig> netConfigs = netInterfaceAddressConfig.getConfigs();
-            netConfigs.add(netConfig);
-            netInterfaceAddressConfigImpl.setNetConfigs(netConfigs);
+    		List<NetConfig> netConfigs = netInterfaceAddressConfig.getConfigs();
+    		netConfigs.add(netConfig);
+        	
+        	if (netInterfaceAddressConfig instanceof NetInterfaceAddressConfigImpl) {
+				NetInterfaceAddressConfigImpl netInterfaceAddressConfigImpl = (NetInterfaceAddressConfigImpl) netInterfaceAddressConfig;
+	            netInterfaceAddressConfigImpl.setNetConfigs(netConfigs);
+			}
+        	else if (netInterfaceAddressConfig instanceof WifiInterfaceAddressConfigImpl) {
+        		WifiInterfaceAddressConfigImpl netInterfaceAddressConfigImpl = (WifiInterfaceAddressConfigImpl) netInterfaceAddressConfig;
+        		netInterfaceAddressConfigImpl.setNetConfigs(netConfigs);
+        	}
+        	else if (netInterfaceAddressConfig instanceof ModemInterfaceAddressConfigImpl) {
+        		ModemInterfaceAddressConfigImpl netInterfaceAddressConfigImpl = (ModemInterfaceAddressConfigImpl) netInterfaceAddressConfig;
+        		netInterfaceAddressConfigImpl.setNetConfigs(netConfigs);
+        	}
         }
 
         this.m_recomputeProperties = true;
