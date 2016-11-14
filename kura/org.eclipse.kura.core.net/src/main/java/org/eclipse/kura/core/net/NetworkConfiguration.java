@@ -223,8 +223,11 @@ public class NetworkConfiguration {
             sb.append(" :: Driver Version: " + netInterfaceConfig.getDriverVersion());
             sb.append(" :: Firmware Version: " + netInterfaceConfig.getFirmwareVersion());
             sb.append(" :: MTU: " + netInterfaceConfig.getMTU());
-            if (netInterfaceConfig.getHardwareAddress() != null) {
-                sb.append(" :: Hardware Address: " + new String(netInterfaceConfig.getHardwareAddress()));
+            try {
+                sb.append(" :: Hardware Address: " +
+                		NetworkUtil.macToString(netInterfaceConfig.getHardwareAddress()));
+            } catch (KuraException e) {
+            	// Only show valid HW address
             }
             sb.append(" :: State: " + netInterfaceConfig.getState());
             sb.append(" :: Type: " + netInterfaceConfig.getType());
@@ -266,10 +269,8 @@ public class NetworkConfiguration {
                                     sb.append(" :: is not configured for STATIC or DHCP");
                                 } else {
                                     sb.append(" :: is STATIC client");
-                                    if (((NetConfigIP4) netConfig).getAddress() != null) {
-                                        sb.append(" :: Address: "
-                                                + ((NetConfigIP4) netConfig).getAddress().getHostAddress());
-                                    }
+                                    sb.append(" :: Address: "
+                                            + ((NetConfigIP4) netConfig).getAddress().getHostAddress());
                                     sb.append(" :: Prefix: " + ((NetConfigIP4) netConfig).getNetworkPrefixLength());
                                     if (((NetConfigIP4) netConfig).getGateway() != null) {
                                         sb.append(" :: Gateway: "
@@ -435,8 +436,8 @@ public class NetworkConfiguration {
 
             NetInterfaceType type = netInterfaceConfig.getType();
             if (type != NetInterfaceType.ETHERNET && type != NetInterfaceType.WIFI
-                    && type != NetInterfaceType.LOOPBACK) {
-                s_logger.error("Type must be ETHERNET, WIFI, or LOOPBACK - type is " + type);
+            		 && type != NetInterfaceType.MODEM && type != NetInterfaceType.LOOPBACK) {
+                s_logger.error("Type must be ETHERNET, WIFI, MODEM, or LOOPBACK - type is " + type);
                 return false;
             }
 

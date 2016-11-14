@@ -21,15 +21,20 @@ import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
 import org.eclipse.kura.core.net.modem.ModemInterfaceAddressConfigImpl;
 import org.eclipse.kura.core.net.modem.ModemInterfaceConfigImpl;
+import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.core.testutil.TestUtil;
+import org.eclipse.kura.net.IP4Address;
 import org.eclipse.kura.net.NetConfig;
 import org.eclipse.kura.net.NetConfigIP4;
+import org.eclipse.kura.net.NetConfigIP6;
 import org.eclipse.kura.net.NetInterfaceAddressConfig;
+import org.eclipse.kura.net.NetInterfaceConfig;
 import org.eclipse.kura.net.NetInterfaceState;
 import org.eclipse.kura.net.NetInterfaceStatus;
 import org.eclipse.kura.net.NetInterfaceType;
 import org.eclipse.kura.net.modem.ModemInterfaceAddressConfig;
 import org.eclipse.kura.net.wifi.WifiInterfaceAddressConfig;
+import org.eclipse.kura.usb.UsbBlockDevice;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
@@ -53,7 +58,7 @@ public class NetworkConfigurationTest {
 			NetworkConfiguration config = new NetworkConfiguration(properties);
 
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
-			assertTrue((Boolean) TestUtil.getFieldValue(config, "m_recomputeProperties"));
+			assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
 		} catch (KuraException e) {
@@ -485,7 +490,7 @@ public class NetworkConfigurationTest {
 	public void testAddNetConfigUnsupportedAddressConfig() {
 		try {
 			// Prepare network configuration
-			MockInterfaceAddressConfig interfaceAddressConfig = new MockInterfaceAddressConfig();
+			MockInterfaceAddressConfigImpl interfaceAddressConfig = new MockInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
 			
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
@@ -510,33 +515,418 @@ public class NetworkConfigurationTest {
 		}
 	}
 
-//	@Test
-//	public void testToString() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetModifiedNetInterfaceConfigs() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetNetInterfaceConfigs() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetNetInterfaceConfig() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testGetConfigurationProperties() {
-//		fail("Not yet implemented");
-//	}
-//
-//	@Test
-//	public void testIsValid() {
-//		fail("Not yet implemented");
-//	}
+	
+	
+	
+	
+	@Test
+	public void testToStringEmpty() {
+		NetworkConfiguration config = new NetworkConfiguration();
+		
+		String expected = "";
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringEthernet1() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		interfaceConfig.setDriver("driver");
+		interfaceConfig.setDriverVersion("driverVersion");
+		interfaceConfig.setFirmwareVersion("firmwareVersion");
+		interfaceConfig.setState(NetInterfaceState.ACTIVATED);
+		interfaceConfig.setUsbDevice(new UsbBlockDevice("vendorId", "productId", "manufacturerName",
+				"productName", "usbBusNumber", "usbDevicePath", "deviceNode"));
+
+		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+		
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
+		addressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: driver :: Driver Version: driverVersion"
+				+ " :: Firmware Version: firmwareVersion :: MTU: 0 :: State: ACTIVATED :: Type: ETHERNET"
+				+ " :: Usb Device: UsbBlockDevice [getDeviceNode()=deviceNode, getVendorId()=vendorId,"
+				+ " getProductId()=productId, getManufacturerName()=manufacturerName, getProductName()=productName,"
+				+ " getUsbBusNumber()=usbBusNumber, getUsbDevicePath()=usbDevicePath,"
+				+ " getUsbPort()=usbBusNumber-usbDevicePath] :: Prefix: 0"
+				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
+				+ "\n	IPv6  :: is STATIC client";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringEthernet2() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		
+		try {
+			interfaceConfig.setHardwareAddress(NetworkUtil.macToBytes("11:22:33:44:55:66"));
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+		
+		try {
+			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+			addressConfig.setAddress(IP4Address.parseHostAddress("10.0.0.1"));
+			addressConfig.setNetmask(IP4Address.parseHostAddress("255.255.255.0"));
+			addressConfig.setBroadcast(IP4Address.parseHostAddress("10.0.0.255"));
+
+			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+			NetConfigIP4 netConfig1 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig1.setDhcp(true);
+			netConfigs.add(netConfig1);
+
+			NetConfigIP4 netConfig2 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig1.setDhcp(true);
+			HashMap<String, Object> properties = new HashMap<String, Object>();
+			properties.put("key", "value");
+			netConfig1.setProperties(properties);
+			netConfigs.add(netConfig2);
+			
+			NetConfigIP4 netConfig3 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig3.setAddress(null);
+			netConfigs.add(netConfig3);
+
+			NetConfigIP4 netConfig4 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig4.setAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.1"));
+			netConfigs.add(netConfig4);
+			
+			netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
+
+			addressConfig.setNetConfigs(netConfigs);
+			
+			interfaceAddresses.add(addressConfig);
+			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false" +
+				" :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null" +
+				" :: MTU: 0 :: Hardware Address: 11:22:33:44:55:66 :: State: null :: Type: ETHERNET" +
+				" :: Usb Device: null :: Address: 10.0.0.1 :: Prefix: 0 :: Netmask: 255.255.255.0" +
+				" :: Broadcast: 10.0.0.255";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	
+	
+	
+	
+	@Test
+	public void testGetModifiedNetInterfaceConfigsNull() {
+		// Prepare configuration
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		config.addNetInterfaceConfig(interfaceConfig);
+		
+		// Get modified net interface configs (all net interface configs are expected)
+		List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
+				config.getModifiedNetInterfaceConfigs();
+		
+		assertEquals(1, modifiedNetInterfaceConfigs.size());
+		assertEquals(interfaceConfig, modifiedNetInterfaceConfigs.get(0));
+	}
+
+	@Test
+	public void testGetModifiedNetInterfaceConfigsEmpty() {
+		try {
+			// Prepare configuration
+			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
+			
+			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+			config.addNetInterfaceConfig(interfaceConfig);
+
+			// Get modified net interface configs (all net interface configs are expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
+					config.getModifiedNetInterfaceConfigs();
+			
+			assertEquals(1, modifiedNetInterfaceConfigs.size());
+			assertEquals(interfaceConfig, modifiedNetInterfaceConfigs.get(0));
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testGetModifiedNetInterfaceConfigsNonEmpty1() {
+		try {
+			// Prepare configuration
+			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
+			
+			EthernetInterfaceConfigImpl interfaceConfig1 = new EthernetInterfaceConfigImpl("if1");
+			config.addNetInterfaceConfig(interfaceConfig1);
+
+			List<String> modifiedInterfaceNames = new ArrayList<String>();
+			modifiedInterfaceNames.add("if2");
+			config.setModifiedInterfaceNames(modifiedInterfaceNames);
+			
+			// Get modified net interface configs (all net interface configs are expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
+					config.getModifiedNetInterfaceConfigs();
+			
+			assertEquals(0, modifiedNetInterfaceConfigs.size());
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testGetModifiedNetInterfaceConfigsNonEmpty2() {
+		try {
+			// Prepare configuration
+			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
+			
+			EthernetInterfaceConfigImpl interfaceConfig1 = new EthernetInterfaceConfigImpl("if1");
+			config.addNetInterfaceConfig(interfaceConfig1);
+
+			EthernetInterfaceConfigImpl interfaceConfig2 = new EthernetInterfaceConfigImpl("if2");
+			config.addNetInterfaceConfig(interfaceConfig2);
+			
+			List<String> modifiedInterfaceNames = new ArrayList<String>();
+			modifiedInterfaceNames.add("if2");
+			config.setModifiedInterfaceNames(modifiedInterfaceNames);
+			
+			// Get modified net interface configs (all net interface configs are expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
+					config.getModifiedNetInterfaceConfigs();
+			
+			assertEquals(1, modifiedNetInterfaceConfigs.size());
+			assertEquals(interfaceConfig2, modifiedNetInterfaceConfigs.get(0));
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+	
+	@Test
+	public void testGetNetInterfaceConfig() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		assertNull(config.getNetInterfaceConfig("if1"));
+		
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		assertNull(config.getNetInterfaceConfig("if2"));
+		assertEquals(interfaceConfig, config.getNetInterfaceConfig("if1"));
+	}
+
+	@Test
+	public void testGetConfigurationPropertiesNull() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
+		assertNull(config.getConfigurationProperties());
+	}
+
+	@Test
+	public void testGetConfigurationProperties() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
+		Map<String, Object> properties = config.getConfigurationProperties();
+		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
+		
+		Map<String, Object> expected = new HashMap<String, Object>();
+		expected.put("net.interfaces", "if1");
+		expected.put("net.interface.if1.mac", "N/A");
+		expected.put("net.interface.if1.loopback", false);
+		expected.put("net.interface.if1.ptp", false);
+		expected.put("net.interface.if1.up", false);
+		expected.put("net.interface.if1.virtual", false);
+		expected.put("net.interface.if1.type", "ETHERNET");
+		expected.put("net.interface.if1.driver", null);
+		expected.put("net.interface.if1.driver.version", null);
+		expected.put("net.interface.if1.firmware.version", null);
+		expected.put("net.interface.if1.config.name", "if1");
+		expected.put("net.interface.if1.config.autoconnect", false);
+		expected.put("net.interface.if1.config.mtu", 0);
+		expected.put("net.interface.if1.eth.link.up", false);
+		
+		assertEquals(expected.size(), properties.size());
+		
+		for (Map.Entry<String, Object> entry: expected.entrySet()) {
+			assertEquals(entry.getValue(), properties.get(entry.getKey()));
+		}
+	}
+
+	@Test
+	public void testIsValidEmpty() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+			
+			assertTrue(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidNonEmpty() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+			config.addNetInterfaceConfig(interfaceConfig);
+			
+			assertTrue(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidValidMTU() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+			interfaceConfig.setMTU(0);
+			config.addNetInterfaceConfig(interfaceConfig);
+
+			interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+			interfaceConfig.setMTU(1);
+			config.addNetInterfaceConfig(interfaceConfig);
+			
+			assertTrue(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidInvalidMTU() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+			interfaceConfig.setMTU(-1);
+			config.addNetInterfaceConfig(interfaceConfig);
+			
+			assertFalse(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidInvalidType() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			MockInterfaceConfigImpl icMock = new MockInterfaceConfigImpl("ifMock");
+			icMock.setType(NetInterfaceType.ADSL);
+			config.addNetInterfaceConfig(icMock);
+			
+			assertFalse(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidValidType() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			EthernetInterfaceConfigImpl icEthernet = new EthernetInterfaceConfigImpl("if1");
+			config.addNetInterfaceConfig(icEthernet);
+
+			WifiInterfaceConfigImpl icWifi = new WifiInterfaceConfigImpl("if2");
+			config.addNetInterfaceConfig(icWifi);
+
+			ModemInterfaceConfigImpl icModem = new ModemInterfaceConfigImpl("if3");
+			config.addNetInterfaceConfig(icModem);
+
+			LoopbackInterfaceConfigImpl icLoopback = new LoopbackInterfaceConfigImpl("if4");
+			config.addNetInterfaceConfig(icLoopback);
+			
+			assertTrue(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidValidConfig() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			NetInterfaceAddressConfigImpl addressConfig1 = new NetInterfaceAddressConfigImpl();
+			addressConfig1.setNetConfigs(null);
+
+			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig.setDhcp(true);
+			
+			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+			netConfigs.add(netConfig);
+			
+			NetInterfaceAddressConfigImpl addressConfig2 = new NetInterfaceAddressConfigImpl();
+			addressConfig2.setNetConfigs(netConfigs);
+
+			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+			interfaceAddresses.add(addressConfig1);
+			interfaceAddresses.add(addressConfig2);
+			
+			EthernetInterfaceConfigImpl icEthernet = new EthernetInterfaceConfigImpl("if1");
+			icEthernet.setNetInterfaceAddresses(interfaceAddresses);
+			config.addNetInterfaceConfig(icEthernet);
+
+			assertTrue(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
+
+	@Test
+	public void testIsValidInvalidConfig() {
+		try {
+			NetworkConfiguration config = new NetworkConfiguration();
+
+			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+			netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
+			
+			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+			addressConfig.setNetConfigs(netConfigs);
+
+			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+			interfaceAddresses.add(addressConfig);
+			
+			EthernetInterfaceConfigImpl icEthernet = new EthernetInterfaceConfigImpl("if1");
+			icEthernet.setNetInterfaceAddresses(interfaceAddresses);
+			config.addNetInterfaceConfig(icEthernet);
+
+			assertFalse(config.isValid());
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+	}
 }
