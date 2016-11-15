@@ -27,7 +27,7 @@ public class TestUtil {
         }
 
         if (field == null) {
-            throw new NoSuchFieldException("Field not found");
+            throw new NoSuchFieldException(String.format("Field not found: %s", fieldName));
         }
 
         return field;
@@ -54,8 +54,7 @@ public class TestUtil {
     private static Method getMethod(Object svc, String methodName, Class... paramTypes) throws NoSuchMethodException {
         Method method = null;
         Class<?> clazz = svc.getClass();
-        hwile: while (!(clazz == Object.class || method != null)) {
-            // method = clazz.getDeclaredMethod(methodName);
+        while (!(clazz == Object.class || method != null)) {
             Method[] methods = clazz.getDeclaredMethods();
             methods: for (Method m : methods) {
                 if (m.getName().compareTo(methodName) == 0) {
@@ -71,18 +70,13 @@ public class TestUtil {
                         }
                     }
 
-                    method = m;
-                    break hwile;
+                    return m;
                 }
             }
             clazz = clazz.getSuperclass();
         }
 
-        if (method == null) {
-            throw new NoSuchMethodException("Method not found");
-        }
-
-        return method;
+        throw new NoSuchMethodException(String.format("Method not found: %s", methodName));
     }
 
     public static Object invokePrivate(Object svc, String methodName, Class<?>[] paramTypes, Object... params)
