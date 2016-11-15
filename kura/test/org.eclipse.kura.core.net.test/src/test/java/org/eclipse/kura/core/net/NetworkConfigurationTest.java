@@ -24,6 +24,7 @@ import org.eclipse.kura.core.net.modem.ModemInterfaceConfigImpl;
 import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.core.testutil.TestUtil;
 import org.eclipse.kura.net.IP4Address;
+import org.eclipse.kura.net.IP6Address;
 import org.eclipse.kura.net.NetConfig;
 import org.eclipse.kura.net.NetConfigIP4;
 import org.eclipse.kura.net.NetConfigIP6;
@@ -32,7 +33,13 @@ import org.eclipse.kura.net.NetInterfaceConfig;
 import org.eclipse.kura.net.NetInterfaceState;
 import org.eclipse.kura.net.NetInterfaceStatus;
 import org.eclipse.kura.net.NetInterfaceType;
+import org.eclipse.kura.net.dhcp.DhcpServerConfigIP4;
+import org.eclipse.kura.net.firewall.FirewallAutoNatConfig;
+import org.eclipse.kura.net.modem.ModemConfig;
+import org.eclipse.kura.net.modem.ModemConfig.AuthType;
+import org.eclipse.kura.net.modem.ModemConfig.PdpType;
 import org.eclipse.kura.net.modem.ModemInterfaceAddressConfig;
+import org.eclipse.kura.net.wifi.WifiConfig;
 import org.eclipse.kura.net.wifi.WifiInterfaceAddressConfig;
 import org.eclipse.kura.usb.UsbBlockDevice;
 import org.junit.FixMethodOrder;
@@ -515,15 +522,30 @@ public class NetworkConfigurationTest {
 		}
 	}
 
-	
-	
-	
-	
 	@Test
 	public void testToStringEmpty() {
 		NetworkConfiguration config = new NetworkConfiguration();
 		
 		String expected = "";
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringNull() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+		addressConfig.setNetConfigs(null);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		config.addNetInterfaceConfig(interfaceConfig);
+		
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false :: Virtual? false"
+				+ " :: Driver: null :: Driver Version: null :: Firmware Version: null :: MTU: 0 :: State: null"
+				+ " :: Type: ETHERNET :: Usb Device: null :: Prefix: 0";
 		assertEquals(expected, config.toString());
 	}
 
@@ -544,7 +566,6 @@ public class NetworkConfigurationTest {
 		
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
-		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
 		addressConfig.setNetConfigs(netConfigs);
 		
 		interfaceAddresses.add(addressConfig);
@@ -559,8 +580,7 @@ public class NetworkConfigurationTest {
 				+ " getProductId()=productId, getManufacturerName()=manufacturerName, getProductName()=productName,"
 				+ " getUsbBusNumber()=usbBusNumber, getUsbDevicePath()=usbDevicePath,"
 				+ " getUsbPort()=usbBusNumber-usbDevicePath] :: Prefix: 0"
-				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
-				+ "\n	IPv6  :: is STATIC client";
+				+ "\n	IPv4  :: is not configured for STATIC or DHCP";
 		
 		assertEquals(expected, config.toString());
 	}
@@ -573,11 +593,7 @@ public class NetworkConfigurationTest {
 		
 		try {
 			interfaceConfig.setHardwareAddress(NetworkUtil.macToBytes("11:22:33:44:55:66"));
-		} catch (KuraException e) {
-			fail("unexpected exception");
-		}
-		
-		try {
+			
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 			addressConfig.setAddress(IP4Address.parseHostAddress("10.0.0.1"));
@@ -601,11 +617,32 @@ public class NetworkConfigurationTest {
 			netConfigs.add(netConfig3);
 
 			NetConfigIP4 netConfig4 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
-			netConfig4.setAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.1"));
+			netConfig4.setAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.2"));
+			netConfig4.setNetworkPrefixLength((short) 24);
+			netConfig4.setDnsServers(null);
+			netConfig4.setWinsServers(null);
+			netConfig4.setDomains(null);
 			netConfigs.add(netConfig4);
-			
-			netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
 
+			NetConfigIP4 netConfig5 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
+			netConfig5.setAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.2"));
+			netConfig5.setNetworkPrefixLength((short) 24);
+			netConfig5.setGateway((IP4Address) IP4Address.parseHostAddress("10.0.0.1"));
+			
+			List<IP4Address> dnsServers = new ArrayList<IP4Address>();
+			dnsServers.add((IP4Address) IP4Address.parseHostAddress("10.0.1.1"));
+			netConfig5.setDnsServers(dnsServers);
+
+			List<IP4Address> winsServers = new ArrayList<IP4Address>();
+			winsServers.add((IP4Address) IP4Address.parseHostAddress("10.0.1.1"));
+			netConfig5.setWinsServers(winsServers);
+
+			List<String> domains = new ArrayList<String>();
+			domains.add("example.com");
+			netConfig5.setDomains(domains);
+			
+			netConfigs.add(netConfig5);
+			
 			addressConfig.setNetConfigs(netConfigs);
 			
 			interfaceAddresses.add(addressConfig);
@@ -618,19 +655,252 @@ public class NetworkConfigurationTest {
 		
 		config.addNetInterfaceConfig(interfaceConfig);
 
-		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false" +
-				" :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null" +
-				" :: MTU: 0 :: Hardware Address: 11:22:33:44:55:66 :: State: null :: Type: ETHERNET" +
-				" :: Usb Device: null :: Address: 10.0.0.1 :: Prefix: 0 :: Netmask: 255.255.255.0" +
-				" :: Broadcast: 10.0.0.255";
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: Hardware Address: 11:22:33:44:55:66 :: State: null :: Type: ETHERNET"
+				+ " :: Usb Device: null :: Address: 10.0.0.1 :: Prefix: 0 :: Netmask: 255.255.255.0"
+				+ " :: Broadcast: 10.0.0.255"
+				+ "\n	IPv4  :: is DHCP client :: key: value"
+				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
+				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
+				+ "\n	IPv4  :: is STATIC client :: Address: 10.0.0.2 :: Prefix: 24"
+				+ "\n	IPv4  :: is STATIC client :: Address: 10.0.0.2 :: Prefix: 24"
+				+ " :: Gateway: 10.0.0.1 :: DNS : 10.0.1.1 :: WINS Server : 10.0.1.1 :: Domains : example.com";
 		
 		assertEquals(expected, config.toString());
 	}
 
-	
-	
-	
-	
+	@Test
+	public void testToStringEthernet3() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		
+		try {
+			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+
+			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+			NetConfigIP6 netConfig1 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
+			netConfig1.setDhcp(true);
+			netConfigs.add(netConfig1);
+
+			NetConfigIP6 netConfig2 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
+			netConfig1.setDhcp(true);
+			HashMap<String, Object> properties = new HashMap<String, Object>();
+			properties.put("key", "value");
+			netConfig1.setProperties(properties);
+			netConfigs.add(netConfig2);
+			
+			NetConfigIP6 netConfig3 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
+			netConfig3.setAddress(null);
+			netConfigs.add(netConfig3);
+
+			NetConfigIP6 netConfig4 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
+			netConfig4.setAddress((IP6Address) IP6Address.parseHostAddress("0:0:0:0:0:0:0:1"));
+			
+			List<IP6Address> dnsServers = new ArrayList<IP6Address>();
+			dnsServers.add((IP6Address) IP6Address.parseHostAddress("0:0:0:0:0:0:0:1"));
+			netConfig4.setDnsServers(dnsServers);
+
+			List<String> domains = new ArrayList<String>();
+			domains.add("example.com");
+			netConfig4.setDomains(domains);
+			
+			netConfigs.add(netConfig4);
+			
+			addressConfig.setNetConfigs(netConfigs);
+			
+			interfaceAddresses.add(addressConfig);
+			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		} catch (KuraException e) {
+			fail("unexpected exception");
+		}
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: State: null :: Type: ETHERNET :: Usb Device: null :: Prefix: 0"
+				+ "\n	IPv6  :: is DHCP client :: key: value"
+				+ "\n	IPv6  :: is STATIC client"
+				+ "\n	IPv6  :: is STATIC client"
+				+ "\n	IPv6  :: is STATIC client :: Address: 0:0:0:0:0:0:0:1 :: DNS : 0:0:0:0:0:0:0:1"
+				+ " :: Domains : example.com";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringWifi1() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
+		
+		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
+		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
+		
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setChannels(null);
+		netConfigs.add(wifiConfig);
+		addressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: State: null :: Type: WIFI :: Usb Device: null :: Prefix: 0"
+				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false :: Group Ciphers: null"
+				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
+				+ " :: Security: null";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringWifi2() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
+		
+		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
+		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
+		
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setChannels(new int[0]);
+		netConfigs.add(wifiConfig);
+		addressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: State: null :: Type: WIFI :: Usb Device: null :: Prefix: 0"
+				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false :: Group Ciphers: null"
+				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
+				+ " :: Security: null";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringWifi3() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
+		
+		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
+		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
+		
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setChannels(new int[] { 1, 2 });
+		netConfigs.add(wifiConfig);
+		addressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: State: null :: Type: WIFI :: Usb Device: null :: Prefix: 0"
+				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false1,2 :: Group Ciphers: null"
+				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
+				+ " :: Security: null";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringModem() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		ModemInterfaceConfigImpl interfaceConfig = new ModemInterfaceConfigImpl("if1");
+		
+		List<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
+		ModemInterfaceAddressConfigImpl addressConfig = new ModemInterfaceAddressConfigImpl();
+		
+		try {
+			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+			ModemConfig modemConfig = new ModemConfig();
+			modemConfig.setApn("apn");
+			modemConfig.setDataCompression(0);
+			modemConfig.setDialString("dialString");
+			modemConfig.setHeaderCompression(0);
+			modemConfig.setPassword("password");
+			modemConfig.setPppNumber(0);
+			modemConfig.setProfileID(0);
+			modemConfig.setUsername("username");
+			modemConfig.setAuthType(AuthType.AUTO);
+			modemConfig.setIpAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.2"));
+			modemConfig.setPdpType(PdpType.PPP);
+			netConfigs.add(modemConfig);
+			addressConfig.setNetConfigs(netConfigs);
+		} catch (UnknownHostException e) {
+			fail("unexpected exception");
+		}
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
+				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
+				+ " :: MTU: 0 :: State: null :: Type: MODEM :: Usb Device: null :: Prefix: 0"
+				+ "\n	ModemConfig  :: APN: apn :: Data Compression: 0 :: Dial String: dialString"
+				+ " :: Header Compression: 0 :: Password: password :: PPP number: 0 :: Profile ID: 0"
+				+ " :: Username: username :: Auth Type: AUTO :: IP Address: 10.0.0.2 :: PDP Type: PPP";
+		
+		assertEquals(expected, config.toString());
+	}
+
+	@Test
+	public void testToStringOther() {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		
+		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		netConfigs.add(new DhcpServerConfigIP4(null, false, null, null, null, 0, 0, (short) 0,
+				null, null, false, null));
+		netConfigs.add(new FirewallAutoNatConfig());
+		netConfigs.add(null);
+		netConfigs.add(new MockConfig());
+		
+		addressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddresses.add(addressConfig);
+		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+		
+		config.addNetInterfaceConfig(interfaceConfig);
+
+		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false :: Virtual? false"
+				+ " :: Driver: null :: Driver Version: null :: Firmware Version: null :: MTU: 0 :: State: null"
+				+ " :: Type: ETHERNET :: Usb Device: null :: Prefix: 0"
+				+ "\n	DhcpServerConfig "
+				+ "\n	FirewallAutoNatConfig "
+				+ "\n	NULL NETCONFIG PRESENT?!?"
+				+ "\n	UNKNOWN CONFIG TYPE???: org.eclipse.kura.core.net.MockConfig";
+		
+		assertEquals(expected, config.toString());
+	}
+
 	@Test
 	public void testGetModifiedNetInterfaceConfigsNull() {
 		// Prepare configuration

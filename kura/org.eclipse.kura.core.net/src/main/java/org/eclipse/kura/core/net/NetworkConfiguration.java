@@ -365,7 +365,7 @@ public class NetworkConfiguration {
                                 sb.append("\n\tFirewallAutoNatConfig ");
                                 // TODO - finish displaying
                             } else {
-                                if (netConfig != null && netConfig.getClass() != null) {
+                                if (netConfig != null) {
                                     sb.append("\n\tUNKNOWN CONFIG TYPE???: " + netConfig.getClass().getName());
                                 } else {
                                     sb.append("\n\tNULL NETCONFIG PRESENT?!?");
