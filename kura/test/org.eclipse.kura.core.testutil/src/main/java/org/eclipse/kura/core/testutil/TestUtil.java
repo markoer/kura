@@ -12,7 +12,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class TestUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestUtil.class);
 
     private static Field getField(Object svc, String fieldName) throws NoSuchFieldException {
         Field field = null;
@@ -22,6 +27,7 @@ public class TestUtil {
                 field = clazz.getDeclaredField(fieldName);
                 break;
             } catch (NoSuchFieldException e) {
+                // don't worry about it, here
             }
             clazz = clazz.getSuperclass();
         }
@@ -33,19 +39,18 @@ public class TestUtil {
         return field;
     }
 
-    public static Object getFieldValue(Object svc, String fieldName) {
+    public static Object getFieldValue(Object svc, String fieldName) throws NoSuchFieldException {
         Object result = null;
 
+        Field field = getField(svc, fieldName);
+
         try {
-            Field field = getField(svc, fieldName);
             field.setAccessible(true);
             result = field.get(svc);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         }
 
         return result;
@@ -56,20 +61,8 @@ public class TestUtil {
         Class<?> clazz = svc.getClass();
         while (!(clazz == Object.class || method != null)) {
             Method[] methods = clazz.getDeclaredMethods();
-            methods: for (Method m : methods) {
-                if (m.getName().compareTo(methodName) == 0) {
-                    if (paramTypes.length > 0) {
-                        if (m.getParameterCount() != paramTypes.length) {
-                            continue;
-                        }
-                        Class<?>[] foundParamTypes = m.getParameterTypes();
-                        for (int i = 0; i < foundParamTypes.length; i++) {
-                            if (foundParamTypes[i] != paramTypes[i]) {
-                                continue methods;
-                            }
-                        }
-                    }
-
+            for (Method m : methods) {
+                if (m.getName().compareTo(methodName) == 0 && checkParameterTypes(m, paramTypes)) {
                     return m;
                 }
             }
@@ -77,6 +70,25 @@ public class TestUtil {
         }
 
         throw new NoSuchMethodException(String.format("Method not found: %s", methodName));
+    }
+
+    private static boolean checkParameterTypes(Method m, Class... paramTypes) {
+        if (paramTypes.length == 0) {
+            return true;
+        }
+
+        if (m.getParameterCount() != paramTypes.length) {
+            return false;
+        }
+
+        Class<?>[] foundParamTypes = m.getParameterTypes();
+        for (int i = 0; i < foundParamTypes.length; i++) {
+            if (foundParamTypes[i] != paramTypes[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static Object invokePrivate(Object svc, String methodName, Class<?>[] paramTypes, Object... params)
@@ -89,9 +101,9 @@ public class TestUtil {
             Object result = method.invoke(svc, params);
             return result;
         } catch (IllegalAccessException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (InvocationTargetException e) {
             throw e.getCause();
         }
@@ -108,9 +120,9 @@ public class TestUtil {
             Object result = method.invoke(svc, params);
             return result;
         } catch (IllegalAccessException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (InvocationTargetException e) {
             throw e.getCause();
         }
@@ -126,9 +138,9 @@ public class TestUtil {
         try {
             field.set(svc, value);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         } catch (IllegalAccessException e) {
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         }
     }
 

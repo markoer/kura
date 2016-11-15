@@ -123,7 +123,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testCreateFactoryExistingPid() throws KuraException, IOException {
+    public void testCreateFactoryExistingPid() throws KuraException, IOException, NoSuchFieldException {
         // negative test; what if existing PID is used
 
         final String factoryPid = "fpid";
@@ -153,7 +153,6 @@ public class ConfigurationServiceTest {
         final String pid = "mypid";
         Map<String, Object> properties = null;
         final boolean takeSnapshot = false;
-        final String caPid = "caPid";
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
@@ -247,6 +246,7 @@ public class ConfigurationServiceTest {
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
 
             synchronized void registerComponentConfiguration(String pid1, String servicePid, String factoryPid1) {
+                // skip this method call
             };
         };
 
@@ -302,6 +302,7 @@ public class ConfigurationServiceTest {
 
             // test that protected component registration was called with the proper parameters
             synchronized void registerComponentConfiguration(String pid1, String servicePid, String factoryPid1) {
+                // skip this method call
             };
 
             // test that snapshot is not made if not configured so
@@ -368,7 +369,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testDeleteFactoryConfigurationNonExistingServicePid() throws KuraException {
+    public void testDeleteFactoryConfigurationNonExistingServicePid() throws KuraException, NoSuchFieldException {
         // pid ony registered in factory pids
 
         // The interesting thing is that factory PIDs are checked in the code, but service PIDs are not... This is
@@ -392,7 +393,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testDeleteFactoryConfigurationNoSnapshot() throws KuraException, IOException {
+    public void testDeleteFactoryConfigurationNoSnapshot() throws KuraException, IOException, NoSuchFieldException {
         // positive test; pid registered in factory and service pids, configuration delete is expected, no snapshot
 
         String factoryPid = "fpid";
@@ -434,7 +435,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testDeleteFactoryConfigurationWithSnapshot() throws KuraException, IOException {
+    public void testDeleteFactoryConfigurationWithSnapshot() throws KuraException, IOException, NoSuchFieldException {
         // positive test; pid registered in factory and service pids, configuration delete is expected, take a snapshot
 
         String factoryPid = "fpid";
@@ -479,7 +480,8 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testDeleteFactoryConfigurationConfigurationException() throws KuraException, IOException {
+    public void testDeleteFactoryConfigurationConfigurationException()
+            throws KuraException, IOException, NoSuchFieldException {
         // negative test; pid registered in factory and service pids, configuration retrieval fails
 
         String factoryPid = "fpid";
@@ -524,7 +526,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testGetConfigurableComponentPids() {
+    public void testGetConfigurableComponentPids() throws NoSuchFieldException {
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
         String[] expectedPIDs = { "pid1", "pid2", "pid3" };
@@ -574,8 +576,8 @@ public class ConfigurationServiceTest {
         ComponentConfigurationImpl config = new ComponentConfigurationImpl();
         Map<String, Object> props = new HashMap<String, Object>();
         config.setProperties(props);
-        String password = "passval1";
-        Password pass = new Password(password);
+        String passStr = "passval1";
+        Password pass = new Password(passStr);
         String passKey = "pass1";
         props.put(passKey, pass);
         props.put("k2", "val2");
@@ -584,13 +586,13 @@ public class ConfigurationServiceTest {
         cs.setCryptoService(cryptoServiceMock);
 
         char[] decpass = "decpass".toCharArray();
-        when(cryptoServiceMock.decryptAes(password.toCharArray())).thenReturn(decpass);
+        when(cryptoServiceMock.decryptAes(passStr.toCharArray())).thenReturn(decpass);
 
         assertEquals("config size", 2, props.size());
 
         Map<String, Object> result = cs.decryptPasswords(config);
 
-        verify(cryptoServiceMock, times(1)).decryptAes(password.toCharArray());
+        verify(cryptoServiceMock, times(1)).decryptAes(passStr.toCharArray());
 
         assertNotNull("properties not null", result);
         assertEquals("config properties size", 2, result.size());
@@ -977,8 +979,6 @@ public class ConfigurationServiceTest {
             }
         };
 
-        Class<?>[] types = { String.class, Map.class };
-
         cs.updateConfiguration(pid, properties);
 
         assertTrue("method called", calls[0]);
@@ -1011,8 +1011,6 @@ public class ConfigurationServiceTest {
                 assertTrue("take snapshot - true", takeSnapshot);
             }
         };
-
-        Class<?>[] types = { String.class, Map.class, boolean.class };
 
         cs.updateConfiguration(pid, propertiesToUpdate, true);
 
@@ -1357,6 +1355,7 @@ public class ConfigurationServiceTest {
     @Test
     public void testLoadEncryptedSnapshotFileContentNullDecrypt() throws KuraException, IOException {
         // test decryption failure while loading an encrypted snapshot
+
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
 
         long snapshotID = 123;
@@ -1447,6 +1446,7 @@ public class ConfigurationServiceTest {
     @Test
     public void testLoadLatestSnapshotConfigurationsNullSnapshots() throws Throwable {
         // test null snapshot pids list
+
         final Set<Long> snapshotList = null;
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
@@ -1622,8 +1622,6 @@ public class ConfigurationServiceTest {
         final Set<Long> snapshotList = new TreeSet<Long>();
         snapshotList.add(234L);
 
-        String cfgxml = "";
-
         final String dir = "snapshotDirEPSNF";
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl() {
@@ -1735,7 +1733,6 @@ public class ConfigurationServiceTest {
         CryptoService cryptoServiceMock = mock(CryptoService.class);
         cs.setCryptoService(cryptoServiceMock);
 
-        KuraException exc = new KuraException(KuraErrorCode.STORE_ERROR);
         String encCfg = "encrypted";
         char[] encrypted = encCfg.toCharArray();
         when(cryptoServiceMock.encryptAes((char[]) Mockito.anyObject())).thenReturn(encrypted);
@@ -1756,7 +1753,7 @@ public class ConfigurationServiceTest {
         d1.delete();
     }
 
-    private String prepareSnapshotXML() throws Exception, IOException {
+    private String prepareSnapshotXML() throws Exception {
         XmlComponentConfigurations cfgs = prepareSnapshot();
 
         StringWriter w = new StringWriter();
@@ -2159,7 +2156,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(f1);
         char[] chars = new char[encCfg.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertArrayEquals("snapshot file content matches", encCfg.toCharArray(), chars);
@@ -2223,7 +2220,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(f1);
         char[] chars = new char[encCfg.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertArrayEquals("snapshot file content matches", encCfg.toCharArray(), chars);
@@ -2289,7 +2286,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(f1);
         char[] chars = new char[encCfg.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertArrayEquals("snapshot file content matches", encCfg.toCharArray(), chars);
@@ -2491,7 +2488,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfigurationPreActivated() {
+    public void testRegisterComponentConfigurationPreActivated() throws NoSuchFieldException {
         // pid is already activated, so it's not added to service pids
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -2512,7 +2509,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfigurationActivateNoFactory() {
+    public void testRegisterComponentConfigurationActivateNoFactory() throws NoSuchFieldException {
         // not activated, but no factory pid available => add to service and activated pids
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -2537,7 +2534,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfigurationWithFactoryPid() {
+    public void testRegisterComponentConfigurationWithFactoryPid() throws NoSuchFieldException {
         // add also factory PID, but no OCD mapped
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -2568,7 +2565,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfigurationConfigException() throws IOException {
+    public void testRegisterComponentConfigurationConfigException() throws IOException, NoSuchFieldException {
         // test exception in cfgadmin
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -2610,7 +2607,7 @@ public class ConfigurationServiceTest {
     }
 
     @Test
-    public void testRegisterComponentConfiguration() throws IOException {
+    public void testRegisterComponentConfiguration() throws IOException, NoSuchFieldException {
         // check that updateWithDefaultConfiguration is called successfully
 
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -2817,8 +2814,6 @@ public class ConfigurationServiceTest {
         BundleContext bundleCtxMock = mock(BundleContext.class);
         when(componentCtxMock.getBundleContext()).thenReturn(bundleCtxMock);
 
-        ServiceReference svcRefMock = mock(ServiceReference.class);
-        ServiceReference[] svcReferences = { svcRefMock };
         when(bundleCtxMock.getServiceReferences((String) null, null))
                 .thenThrow(new InvalidSyntaxException("test", null));
 
@@ -2839,7 +2834,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(files[0]);
         char[] chars = new char[expect.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertEquals(expect, new String(chars));
@@ -2848,7 +2843,7 @@ public class ConfigurationServiceTest {
 
         fr = new FileReader(files[1]);
         chars = new char[expect.length()];
-        read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertEquals(expect, new String(chars));
@@ -2936,7 +2931,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(files[0]);
         char[] chars = new char[expect.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertEquals(expect, new String(chars));
@@ -3019,7 +3014,7 @@ public class ConfigurationServiceTest {
 
         FileReader fr = new FileReader(files[0]);
         char[] chars = new char[expect.length()];
-        int read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertEquals(expect, new String(chars));
@@ -3028,7 +3023,7 @@ public class ConfigurationServiceTest {
 
         fr = new FileReader(files[1]);
         chars = new char[expect.length()];
-        read = fr.read(chars);
+        fr.read(chars);
         fr.close();
 
         assertEquals(expect, new String(chars));
