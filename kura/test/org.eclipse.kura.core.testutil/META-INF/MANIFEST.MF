@@ -13,4 +13,4 @@ Bundle-ActivationPolicy: lazy
 Comment: Unit testing utilities
 Require-Bundle: org.junit;bundle-version="4.12.0",
  org.mockito.mockito-core;bundle-version="1.10.19"
-Export-Package: org.eclipse.kura.core.testutil
+Export-Package: org.eclipse.kura.core.testutil;version="1.0.0"
