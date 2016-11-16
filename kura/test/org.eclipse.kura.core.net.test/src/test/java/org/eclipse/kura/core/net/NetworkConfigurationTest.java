@@ -19,6 +19,7 @@ import java.util.Map;
 
 import org.eclipse.kura.KuraErrorCode;
 import org.eclipse.kura.KuraException;
+import org.eclipse.kura.configuration.Password;
 import org.eclipse.kura.core.net.modem.ModemInterfaceAddressConfigImpl;
 import org.eclipse.kura.core.net.modem.ModemInterfaceConfigImpl;
 import org.eclipse.kura.core.net.util.NetworkUtil;
@@ -39,8 +40,14 @@ import org.eclipse.kura.net.modem.ModemConfig;
 import org.eclipse.kura.net.modem.ModemConfig.AuthType;
 import org.eclipse.kura.net.modem.ModemConfig.PdpType;
 import org.eclipse.kura.net.modem.ModemInterfaceAddressConfig;
+import org.eclipse.kura.net.wifi.WifiBgscan;
+import org.eclipse.kura.net.wifi.WifiBgscanModule;
+import org.eclipse.kura.net.wifi.WifiCiphers;
 import org.eclipse.kura.net.wifi.WifiConfig;
 import org.eclipse.kura.net.wifi.WifiInterfaceAddressConfig;
+import org.eclipse.kura.net.wifi.WifiMode;
+import org.eclipse.kura.net.wifi.WifiRadioMode;
+import org.eclipse.kura.net.wifi.WifiSecurity;
 import org.eclipse.kura.usb.UsbBlockDevice;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -1041,11 +1048,7 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if1.config.mtu", 0);
 		expected.put("net.interface.if1.eth.link.up", false);
 		
-		assertEquals(expected.size(), properties.size());
-		
-		for (Map.Entry<String, Object> entry: expected.entrySet()) {
-			assertEquals(entry.getValue(), properties.get(entry.getKey()));
-		}
+		assertMapEquals(expected, properties);
 	}
 
 	@Test
@@ -1197,6 +1200,496 @@ public class NetworkConfigurationTest {
 			assertFalse(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
+		}
+	}
+
+    // ---------------------------------------------------------------
+    //
+    // Private Methods
+    //
+    // ---------------------------------------------------------------
+
+//	@Test
+//	public void testRecomputeNetworkProperties() {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//		try {
+//			
+//			TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+//			
+//		} catch (Throwable e1) {
+//			fail("unexpected exception");
+//		}
+//	}
+
+	@Test
+	public void testAddWifiConfigIP4PropertiesWifiModeNull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setMode(null);
+		
+		String netIfConfigPrefix = "";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addWifiConfigIP4Properties", wifiConfig, netIfConfigPrefix, properties);
+		
+		assertTrue(properties.isEmpty());
+	}
+
+	@Test
+	public void testAddWifiConfigIP4PropertiesBasic() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setMode(WifiMode.ADHOC);
+		wifiConfig.setSSID("ssid");
+		wifiConfig.setDriver("driver");
+		wifiConfig.setBroadcast(false);
+		wifiConfig.setPingAccessPoint(false);
+		wifiConfig.setIgnoreSSID(false);
+
+		String netIfConfigPrefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.wifi.adhoc.ssid", "ssid");
+		expected.put("prefix.wifi.adhoc.driver", "driver");
+		expected.put("prefix.wifi.adhoc.mode", "ADHOC");
+		expected.put("prefix.wifi.adhoc.securityType", "NONE");
+		expected.put("prefix.wifi.adhoc.channel", "");
+		expected.put("prefix.wifi.adhoc.passphrase", new Password(""));
+		expected.put("prefix.wifi.adhoc.hardwareMode", "");
+		expected.put("prefix.wifi.adhoc.broadcast", (Boolean) false);
+		expected.put("prefix.wifi.adhoc.bgscan", "");
+		expected.put("prefix.wifi.adhoc.pingAccessPoint", (Boolean) false);
+		expected.put("prefix.wifi.adhoc.ignoreSSID", (Boolean) false);
+
+		TestUtil.invokePrivate(config, "addWifiConfigIP4Properties", wifiConfig, netIfConfigPrefix, properties);
+
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddWifiConfigIP4PropertiesFull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiConfig wifiConfig = new WifiConfig();
+		wifiConfig.setMode(WifiMode.ADHOC);
+		wifiConfig.setChannels(new int[] {1, 2, 3});
+		wifiConfig.setSSID("ssid");
+		wifiConfig.setDriver("driver");
+		wifiConfig.setSecurity(WifiSecurity.GROUP_CCMP);
+		wifiConfig.setPasskey("password");
+		wifiConfig.setHardwareMode("HW mode");
+		wifiConfig.setBroadcast(true);
+		wifiConfig.setRadioMode(WifiRadioMode.RADIO_MODE_80211a);
+		wifiConfig.setBgscan(new WifiBgscan(WifiBgscanModule.LEARN, 1, 2, 3));
+		wifiConfig.setPairwiseCiphers(WifiCiphers.CCMP);
+		wifiConfig.setGroupCiphers(WifiCiphers.TKIP);
+		wifiConfig.setPingAccessPoint(true);
+		wifiConfig.setIgnoreSSID(true);
+
+		String netIfConfigPrefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.wifi.adhoc.ssid", "ssid");
+		expected.put("prefix.wifi.adhoc.driver", "driver");
+		expected.put("prefix.wifi.adhoc.mode", "ADHOC");
+		expected.put("prefix.wifi.adhoc.securityType", "GROUP_CCMP");
+		expected.put("prefix.wifi.adhoc.channel", "1 2 3");
+		expected.put("prefix.wifi.adhoc.passphrase", new Password("password"));
+		expected.put("prefix.wifi.adhoc.hardwareMode", "HW mode");
+		expected.put("prefix.wifi.adhoc.broadcast", (Boolean) true);
+		expected.put("prefix.wifi.adhoc.radioMode", "RADIO_MODE_80211a");
+		expected.put("prefix.wifi.adhoc.bgscan", "learn:1:2:3");
+		expected.put("prefix.wifi.adhoc.pairwiseCiphers", "CCMP");
+		expected.put("prefix.wifi.adhoc.groupCiphers", "TKIP");
+		expected.put("prefix.wifi.adhoc.pingAccessPoint", (Boolean) true);
+		expected.put("prefix.wifi.adhoc.ignoreSSID", (Boolean) true);
+
+		TestUtil.invokePrivate(config, "addWifiConfigIP4Properties", wifiConfig, netIfConfigPrefix, properties);
+
+		assertMapEquals(expected, properties);
+	}
+	
+	@Test
+	public void testGetWifiConfigMinimal1() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.adhoc.passphrase", new Password("password"));
+		properties.put("prefix.wifi.adhoc.broadcast", (Boolean) true);
+		
+		WifiConfig expected = new WifiConfig();
+		expected.setMode(WifiMode.ADHOC);
+		expected.setSSID("");
+		expected.setDriver("");
+		expected.setSecurity(WifiSecurity.NONE);
+		expected.setPasskey("password");
+		expected.setHardwareMode("");
+		expected.setIgnoreSSID(false);
+		expected.setBroadcast(true);
+		
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
+				config, "getWifiConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
+
+		assertEquals(expected, wifiConfig);
+	}
+	
+	@Test
+	public void testGetWifiConfigMinimal2() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.infra.ssid", "");
+		properties.put("prefix.wifi.infra.driver", "");
+		properties.put("prefix.wifi.infra.securityType", "");
+		properties.put("prefix.wifi.infra.channel", "");
+		properties.put("prefix.wifi.infra.passphrase", "password");
+		properties.put("prefix.wifi.infra.radioMode", "");
+		
+		WifiConfig expected = new WifiConfig();
+		expected.setMode(WifiMode.INFRA);
+		expected.setSSID("");
+		expected.setDriver("");
+		expected.setSecurity(WifiSecurity.NONE);
+		expected.setPasskey("password");
+		expected.setHardwareMode("");
+		expected.setIgnoreSSID(false);
+		expected.setBgscan(new WifiBgscan(""));
+		
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
+				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		assertEquals(expected, wifiConfig);
+	}
+	
+	@Test
+	public void testGetWifiConfigInvalidSecurityType() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.infra.securityType", "xyz");
+		
+		try {
+			TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+			fail("exception was expected");
+		} catch (KuraException e) {
+			assertEquals(KuraErrorCode.INTERNAL_ERROR, e.getCode());
+		}
+	}
+	
+	@Test
+	public void testGetWifiConfigInvalidChannel() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.infra.channel", "1 a 3");
+		properties.put("prefix.wifi.infra.ssid", "ssid");
+		properties.put("prefix.wifi.infra.driver", "driver");
+		properties.put("prefix.wifi.infra.securityType", "GROUP_CCMP");
+		properties.put("prefix.wifi.infra.passphrase", new Password("password"));
+		properties.put("prefix.wifi.infra.hardwareMode", "HW mode");
+		properties.put("prefix.wifi.infra.broadcast", (Boolean) true);
+		properties.put("prefix.wifi.infra.radioMode", "RADIO_MODE_80211a");
+		properties.put("prefix.wifi.infra.bgscan", "learn:1:2:3");
+		properties.put("prefix.wifi.infra.pairwiseCiphers", "CCMP");
+		properties.put("prefix.wifi.infra.groupCiphers", "TKIP");
+		properties.put("prefix.wifi.infra.pingAccessPoint", (Boolean) true);
+		properties.put("prefix.wifi.infra.ignoreSSID", (Boolean) true);
+		
+		WifiConfig expected = new WifiConfig();
+		expected.setMode(WifiMode.INFRA);
+		expected.setChannels(new int[] {1, 0, 3});
+		expected.setSSID("ssid");
+		expected.setDriver("driver");
+		expected.setSecurity(WifiSecurity.GROUP_CCMP);
+		expected.setPasskey("password");
+		expected.setHardwareMode("HW mode");
+		expected.setBroadcast(true);
+		expected.setRadioMode(WifiRadioMode.RADIO_MODE_80211a);
+		expected.setBgscan(new WifiBgscan(WifiBgscanModule.LEARN, 1, 2, 3));
+		expected.setPairwiseCiphers(WifiCiphers.CCMP);
+		expected.setGroupCiphers(WifiCiphers.TKIP);
+		expected.setPingAccessPoint(true);
+		expected.setIgnoreSSID(true);
+		
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
+				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		assertEquals(expected, wifiConfig);
+	}
+	
+	@Test
+	public void testGetWifiConfigInvalidRadioMode() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.infra.radioMode", "xyz");
+		
+		try {
+			TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+			fail("exception was expected");
+		} catch (KuraException e) {
+			assertEquals(KuraErrorCode.INTERNAL_ERROR, e.getCode());
+		}
+	}
+	
+	@Test
+	public void testGetWifiConfigFullInfra() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.infra.ssid", "ssid");
+		properties.put("prefix.wifi.infra.driver", "driver");
+		properties.put("prefix.wifi.infra.securityType", "GROUP_CCMP");
+		properties.put("prefix.wifi.infra.channel", "1 2 3");
+		properties.put("prefix.wifi.infra.passphrase", new Password("password"));
+		properties.put("prefix.wifi.infra.hardwareMode", "HW mode");
+		properties.put("prefix.wifi.infra.broadcast", (Boolean) true);
+		properties.put("prefix.wifi.infra.radioMode", "RADIO_MODE_80211a");
+		properties.put("prefix.wifi.infra.bgscan", "learn:1:2:3");
+		properties.put("prefix.wifi.infra.pairwiseCiphers", "CCMP");
+		properties.put("prefix.wifi.infra.groupCiphers", "TKIP");
+		properties.put("prefix.wifi.infra.pingAccessPoint", (Boolean) true);
+		properties.put("prefix.wifi.infra.ignoreSSID", (Boolean) true);
+		
+		WifiConfig expected = new WifiConfig();
+		expected.setMode(WifiMode.INFRA);
+		expected.setChannels(new int[] {1, 2, 3});
+		expected.setSSID("ssid");
+		expected.setDriver("driver");
+		expected.setSecurity(WifiSecurity.GROUP_CCMP);
+		expected.setPasskey("password");
+		expected.setHardwareMode("HW mode");
+		expected.setBroadcast(true);
+		expected.setRadioMode(WifiRadioMode.RADIO_MODE_80211a);
+		expected.setBgscan(new WifiBgscan(WifiBgscanModule.LEARN, 1, 2, 3));
+		expected.setPairwiseCiphers(WifiCiphers.CCMP);
+		expected.setGroupCiphers(WifiCiphers.TKIP);
+		expected.setPingAccessPoint(true);
+		expected.setIgnoreSSID(true);
+		
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
+				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		assertEquals(expected, wifiConfig);
+	}
+
+	@Test
+	public void testGetWifiConfigFullNonInfra() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String netIfConfigPrefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.wifi.adhoc.ssid", "ssid");
+		properties.put("prefix.wifi.adhoc.driver", "driver");
+		properties.put("prefix.wifi.adhoc.securityType", "GROUP_CCMP");
+		properties.put("prefix.wifi.adhoc.channel", "1 2 3");
+		properties.put("prefix.wifi.adhoc.passphrase", new Password("password"));
+		properties.put("prefix.wifi.adhoc.hardwareMode", "HW mode");
+		properties.put("prefix.wifi.adhoc.broadcast", (Boolean) true);
+		properties.put("prefix.wifi.adhoc.radioMode", "RADIO_MODE_80211a");
+		properties.put("prefix.wifi.adhoc.pairwiseCiphers", "CCMP");
+		properties.put("prefix.wifi.adhoc.ignoreSSID", (Boolean) true);
+		
+		WifiConfig expected = new WifiConfig();
+		expected.setMode(WifiMode.ADHOC);
+		expected.setChannels(new int[] {1, 2, 3});
+		expected.setSSID("ssid");
+		expected.setDriver("driver");
+		expected.setSecurity(WifiSecurity.GROUP_CCMP);
+		expected.setPasskey("password");
+		expected.setHardwareMode("HW mode");
+		expected.setBroadcast(true);
+		expected.setRadioMode(WifiRadioMode.RADIO_MODE_80211a);
+		expected.setPairwiseCiphers(WifiCiphers.CCMP);
+		expected.setIgnoreSSID(true);
+		
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
+				config, "getWifiConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
+
+		assertEquals(expected, wifiConfig);
+	}
+
+//	@Test
+//	public void testAddModemConfigProperties() {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//		try {
+//			
+//			TestUtil.invokePrivate(config, "addModemConfigProperties");
+//			
+//		} catch (Throwable e1) {
+//			fail("unexpected exception");
+//		}
+//	}
+//
+//	@Test
+//	public void testGetModemConfigMinimal1() throws Throwable {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//		String netIfConfigPrefix = "prefix.";
+//
+//		HashMap<String, Object> properties = new HashMap<String, Object>();
+//		properties.put("prefix.", null);
+//		
+//		ModemConfig expected = new ModemConfig();
+//		//expected.
+//		
+//		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(
+//				config, "getModemConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
+//
+//		assertEquals(expected, modemConfig);
+//	}
+//
+//	@Test
+//	public void testAddNetConfigIP4Properties() {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//		try {
+//			
+//			TestUtil.invokePrivate(config, "addNetConfigIP4Properties");
+//			
+//		} catch (Throwable e1) {
+//			fail("unexpected exception");
+//		}
+//	}
+//
+//	@Test
+//	public void testAddNetConfigIP6Properties() {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//		try {
+//			
+//			TestUtil.invokePrivate(config, "addNetConfigIP6Properties");
+//			
+//		} catch (Throwable e1) {
+//			fail("unexpected exception");
+//		}
+//	}
+
+	@Test
+	public void testAddDhcpServerConfig4() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		ArrayList<IP4Address> dnsServers = new ArrayList<IP4Address>();
+		dnsServers.add((IP4Address) IP4Address.parseHostAddress("10.0.1.1"));
+		
+		DhcpServerConfigIP4 dhcpConfig = new DhcpServerConfigIP4(
+				"if1",
+				false,
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.0"),
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.1"),
+				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"),
+				1,
+				2,
+				(short) 24,
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.10"),
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"),
+				true,
+				dnsServers);
+
+		String netIfConfigPrefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.dhcpServer4.enabled", false);
+		expected.put("prefix.dhcpServer4.defaultLeaseTime", 1);
+		expected.put("prefix.dhcpServer4.maxLeaseTime", 2);
+		expected.put("prefix.dhcpServer4.prefix", (short) 24);
+		expected.put("prefix.dhcpServer4.rangeStart", "10.0.0.10");
+		expected.put("prefix.dhcpServer4.rangeEnd", "10.0.0.15");
+		expected.put("prefix.dhcpServer4.passDns", true);
+
+		TestUtil.invokePrivate(config, "addDhcpServerConfig4", dhcpConfig, netIfConfigPrefix, properties);
+		
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddFirewallNatConfig() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		FirewallAutoNatConfig autoNatConfig = new FirewallAutoNatConfig();
+
+		String netIfConfigPrefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.nat.enabled", true);
+
+		TestUtil.invokePrivate(config, "addFirewallNatConfig", autoNatConfig, netIfConfigPrefix, properties);
+		
+		assertMapEquals(expected, properties);
+	}
+	
+	@Test
+	public void testAddInterfaceConfigurationNull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = null;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs");
+		assertTrue(netInterfaceConfigs.isEmpty());
+	}
+
+	@Test
+	public void testAddInterfaceConfigurationLoopback() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = NetInterfaceType.LOOPBACK;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "LOOPBACK");
+		properties.put("net.interface.if1.autoconnect", true);
+
+        LoopbackInterfaceConfigImpl loopbackInterfaceConfig = new LoopbackInterfaceConfigImpl(interfaceName);
+        List<NetInterfaceAddressConfig> loopbackInterfaceAddressConfigs = new ArrayList<NetInterfaceAddressConfig>();
+        loopbackInterfaceAddressConfigs.add(new NetInterfaceAddressConfigImpl());
+        loopbackInterfaceConfig.setNetInterfaceAddresses(loopbackInterfaceAddressConfigs);
+        loopbackInterfaceConfig.setAutoConnect(true);
+        
+        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
+        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+        expected.put(interfaceName, loopbackInterfaceConfig);
+        
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		assertMapEquals(expected,
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs"));
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	private <T> void assertMapEquals(Map<String, T> expected, Map<String, T> actual) {
+		assertEquals("Size", expected.size(), actual.size());
+		
+		for (Map.Entry<String, T> entry: expected.entrySet()) {
+			assertEquals("Item", entry.getValue(), actual.get(entry.getKey()));
 		}
 	}
 }

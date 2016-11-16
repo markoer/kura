@@ -772,11 +772,7 @@ public class NetworkConfiguration {
 
         properties.put(prefix + ".ssid", wifiConfig.getSSID());
         properties.put(prefix + ".driver", wifiConfig.getDriver());
-        if (wifiConfig.getMode() != null) {
-            properties.put(prefix + ".mode", wifiConfig.getMode().toString());
-        } else {
-            properties.put(prefix + ".mode", WifiMode.UNKNOWN.toString());
-        }
+        properties.put(prefix + ".mode", wifiConfig.getMode().toString());
         if (wifiConfig.getSecurity() != null) {
             properties.put(prefix + ".securityType", wifiConfig.getSecurity().toString());
         } else {
@@ -784,12 +780,12 @@ public class NetworkConfiguration {
         }
         properties.put(prefix + ".channel", sbChannel.toString());
         Password psswd = wifiConfig.getPasskey();
-        if (wifiConfig != null && psswd != null) {
+        if (psswd != null) {
             properties.put(prefix + ".passphrase", psswd);
         } else {
             properties.put(prefix + ".passphrase", new Password(""));
         }
-        if (wifiConfig != null && wifiConfig.getHardwareMode() != null) {
+        if (wifiConfig.getHardwareMode() != null) {
             properties.put(prefix + ".hardwareMode", wifiConfig.getHardwareMode());
         } else {
             properties.put(prefix + ".hardwareMode", "");
@@ -880,32 +876,29 @@ public class NetworkConfiguration {
             if (channelsString.length() > 0) {
                 StringTokenizer st = new StringTokenizer(channelsString, " ");
                 int tokens = st.countTokens();
-                if (tokens > 0) {
-                    int[] channels = new int[tokens];
-                    for (int i = 0; i < tokens; i++) {
-                        String token = st.nextToken();
-                        try {
-                            channels[i] = Integer.parseInt(token);
-                        } catch (Exception e) {
-                            s_logger.error("Error parsing channels!", e);
-                        }
+                int[] channels = new int[tokens];
+                for (int i = 0; i < tokens; i++) {
+                    String token = st.nextToken();
+                    try {
+                        channels[i] = Integer.parseInt(token);
+                    } catch (Exception e) {
+                        s_logger.error("Error parsing channels!", e);
                     }
-                    wifiConfig.setChannels(channels);
                 }
+                wifiConfig.setChannels(channels);
             }
         }
 
         // passphrase
         key = prefix + ".passphrase";
         Object psswdObj = properties.get(key);
-        Password psswd = null;
+        String passphrase = null;
         if (psswdObj instanceof Password) {
-            psswd = (Password) psswdObj;
+        	Password psswd = (Password) psswdObj;
+            passphrase = new String(psswd.getPassword());
         } else if (psswdObj instanceof String) {
-            char[] tempPsswd = ((String) psswdObj).toCharArray();
-            psswd = new Password(tempPsswd);
+        	passphrase = (String) psswdObj;
         }
-        String passphrase = new String(psswd.getPassword());
 
         s_logger.trace("passphrase is {}", passphrase);
         wifiConfig.setPasskey(passphrase);

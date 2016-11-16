@@ -11,6 +11,8 @@
  *******************************************************************************/
 package org.eclipse.kura.configuration;
 
+import java.util.Arrays;
+
 public class Password {
 
     private char[] m_password;
@@ -35,4 +37,30 @@ public class Password {
     public String toString() {
         return new String(this.m_password);
     }
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(m_password);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (!(obj instanceof Password)) {
+			return false;
+		}
+		Password other = (Password) obj;
+		if (!Arrays.equals(m_password, other.m_password)) {
+			return false;
+		}
+		return true;
+	}
 }
