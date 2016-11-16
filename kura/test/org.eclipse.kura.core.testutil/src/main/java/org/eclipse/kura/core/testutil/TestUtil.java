@@ -15,6 +15,9 @@ import java.lang.reflect.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Collection of methods for testing private methods and fields.
+ */
 public class TestUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(TestUtil.class);
@@ -39,6 +42,14 @@ public class TestUtil {
         return field;
     }
 
+    /**
+     * Returns the current value of a (private) field in an object.
+     * 
+     * @param svc
+     * @param fieldName
+     * @return
+     * @throws NoSuchFieldException
+     */
     public static Object getFieldValue(Object svc, String fieldName) throws NoSuchFieldException {
         Object result = null;
 
@@ -73,7 +84,7 @@ public class TestUtil {
     }
 
     private static boolean checkParameterTypes(Method m, Class... paramTypes) {
-        if (paramTypes.length == 0) {
+        if (paramTypes == null || paramTypes.length == 0) {
             return true;
         }
 
@@ -91,8 +102,19 @@ public class TestUtil {
         return true;
     }
 
+    /**
+     * Invokes a (private) method on an object.
+     * 
+     * @param svc
+     * @param methodName
+     * @param paramTypes
+     * @param params
+     * @return
+     * @throws Throwable
+     */
     public static Object invokePrivate(Object svc, String methodName, Class<?>[] paramTypes, Object... params)
             throws Throwable {
+
         Method method = getMethod(svc, methodName, paramTypes);
 
         method.setAccessible(true);
@@ -111,25 +133,27 @@ public class TestUtil {
         return null;
     }
 
+    /**
+     * Invokes a (private) method on an object.
+     * 
+     * @param svc
+     * @param methodName
+     * @param params
+     * @return
+     * @throws Throwable
+     */
     public static Object invokePrivate(Object svc, String methodName, Object... params) throws Throwable {
-        Method method = getMethod(svc, methodName);
-
-        method.setAccessible(true);
-
-        try {
-            Object result = method.invoke(svc, params);
-            return result;
-        } catch (IllegalAccessException e) {
-            logger.warn(e.getMessage(), e);
-        } catch (IllegalArgumentException e) {
-            logger.warn(e.getMessage(), e);
-        } catch (InvocationTargetException e) {
-            throw e.getCause();
-        }
-
-        return null;
+        return invokePrivate(svc, methodName, null, params);
     }
 
+    /**
+     * Sets a value of a (private) field.
+     * 
+     * @param svc
+     * @param fieldName
+     * @param value
+     * @throws NoSuchFieldException
+     */
     public static void setFieldValue(Object svc, String fieldName, Object value) throws NoSuchFieldException {
         Field field = getField(svc, fieldName);
 
