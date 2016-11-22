@@ -51,10 +51,13 @@ import org.eclipse.kura.configuration.metatype.OCD;
 import org.eclipse.kura.core.configuration.metatype.Tocd;
 import org.eclipse.kura.core.configuration.util.XmlUtil;
 import org.eclipse.kura.core.testutil.TestUtil;
+import org.eclipse.kura.core.testutil.group.PrivateTests;
+import org.eclipse.kura.core.testutil.group.PublicTests;
 import org.eclipse.kura.crypto.CryptoService;
 import org.eclipse.kura.system.SystemService;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runners.MethodSorters;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -71,6 +74,7 @@ import org.osgi.service.component.ComponentContext;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ConfigurationServiceTest {
 
+    @Category({ PublicTests.class })
     @Test
     public void testGetFactoryComponentPids() throws NoSuchFieldException {
         // test that the returned PIDs are the same as in the service and that they cannot be modified
@@ -102,6 +106,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryConfigurationNulls() {
         // negative test; how null values are handled
@@ -122,6 +127,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryExistingPid() throws KuraException, IOException, NoSuchFieldException {
         // negative test; what if existing PID is used
@@ -145,6 +151,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryConfigurationConfigException() throws KuraException, IOException {
         // negative test; invalid configuration exception
@@ -172,6 +179,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryConfigurationNoSnapshot() throws KuraException, IOException {
         // a positive test, without snapshot creation
@@ -233,6 +241,7 @@ public class ConfigurationServiceTest {
         verify(cfgMock2, times(1)).update((Dictionary<String, Object>) anyObject());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryConfigurationMergeProperties() throws KuraException, IOException {
         // a positive test, take passed properties into account, without snapshot creation
@@ -286,6 +295,7 @@ public class ConfigurationServiceTest {
         verify(cfgMock2, Mockito.times(1)).update((Dictionary<String, Object>) Mockito.anyObject());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testCreateFactoryConfigurationWithSnapshot() throws KuraException, IOException {
         // a positive test, check only snapshot creation
@@ -332,6 +342,7 @@ public class ConfigurationServiceTest {
         assertTrue("snapshot() called", snapshots[0]);
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationNulls() throws KuraException {
         // negative test; null pid
@@ -350,6 +361,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationNonExistingFactoryPid() throws KuraException {
         // negative test; pid not registered
@@ -368,6 +380,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationNonExistingServicePid() throws KuraException, NoSuchFieldException {
         // pid ony registered in factory pids
@@ -392,6 +405,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationNoSnapshot() throws KuraException, IOException, NoSuchFieldException {
         // positive test; pid registered in factory and service pids, configuration delete is expected, no snapshot
@@ -434,6 +448,7 @@ public class ConfigurationServiceTest {
         verify(configMock, Mockito.times(1)).delete();
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationWithSnapshot() throws KuraException, IOException, NoSuchFieldException {
         // positive test; pid registered in factory and service pids, configuration delete is expected, take a snapshot
@@ -479,6 +494,7 @@ public class ConfigurationServiceTest {
         assertTrue("snapshot taken", snapshots[0]);
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDeleteFactoryConfigurationConfigurationException()
             throws KuraException, IOException, NoSuchFieldException {
@@ -509,6 +525,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testGetConfigurableComponentPidsEmpty() {
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -525,6 +542,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testGetConfigurableComponentPids() throws NoSuchFieldException {
         ConfigurationServiceImpl cs = new ConfigurationServiceImpl();
@@ -553,11 +571,13 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testGetComponentConfigurations() {
         // TODO: Not yet implemented
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testGetComponentConfiguration() {
         // TODO: Not yet implemented
@@ -567,6 +587,7 @@ public class ConfigurationServiceTest {
      * FIXME: default ComponentConfigurationImpl constructor doesn't initialize properties, but interface doesn't
      * offer a setter method. Result... NPE.
      */
+    @Category({ PublicTests.class })
     @Test
     public void testDecryptPasswords() throws KuraException {
         // test password decryption
@@ -601,6 +622,7 @@ public class ConfigurationServiceTest {
         assertArrayEquals("decrypted pass OK - reference", decpass, ((Password) props.get(passKey)).getPassword());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testDecryptPasswordsException() throws KuraException {
         // test error in password decryption
@@ -631,6 +653,7 @@ public class ConfigurationServiceTest {
     /*
      * FIXME: No input parameter checking performed!
      */
+    @Category({ PublicTests.class })
     @Test
     public void testMergeWithDefaultsNulls() throws KuraException {
         // test with null parameters
@@ -647,6 +670,7 @@ public class ConfigurationServiceTest {
         }
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testMergeWithDefaultsEmpty() throws KuraException {
         // empty input
@@ -662,6 +686,7 @@ public class ConfigurationServiceTest {
         assertEquals("still empty", 0, properties.size());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testMergeWithDefaults() throws KuraException {
         // a few default values, a few overrides, one ovelap
@@ -696,6 +721,7 @@ public class ConfigurationServiceTest {
         assertTrue("default value only", properties.containsKey("defKey2"));
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testRegisterSelfConfiguringComponentNull() throws NoSuchFieldException {
         // test behavior with null - just abort
@@ -714,6 +740,7 @@ public class ConfigurationServiceTest {
         verify(allPidsMock, times(0)).contains(Mockito.anyObject());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testRegisterSelfConfiguringComponentNonExistingPID() throws NoSuchFieldException {
         // test behavior with non-existing pid
@@ -743,6 +770,7 @@ public class ConfigurationServiceTest {
         assertEquals("added pid to activated configured components", 1, asc.size());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testRegisterSelfConfiguringComponentExistingPID() throws NoSuchFieldException {
         // test behavior with existing pid
@@ -772,6 +800,7 @@ public class ConfigurationServiceTest {
         assertEquals("not added pid to activated configured components", 0, asc.size());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testUnregisterComponentConfigurationNull() throws NoSuchFieldException {
         // test behavior with null - just abort
@@ -790,6 +819,7 @@ public class ConfigurationServiceTest {
         verify(allPidsMock, times(0)).contains(Mockito.anyObject());
     }
 
+    @Category({ PublicTests.class })
     @Test
     public void testUnregisterComponentConfiguration() throws NoSuchFieldException {
         // test behavior with non-existing pid
@@ -828,6 +858,7 @@ public class ConfigurationServiceTest {
     /*
      * TODO: maybe fix implementation
      */
+    @Category({ PrivateTests.class })
     @Test
     public void testEncryptConfigsNull() throws NoSuchMethodException {
         // test with null parameter
@@ -844,6 +875,7 @@ public class ConfigurationServiceTest {
 
     }
 
+    @Category({ PrivateTests.class })
     @Test
     public void testEncryptConfigsNoConfigs() throws Throwable {
         // empty list
@@ -857,6 +889,7 @@ public class ConfigurationServiceTest {
         // runs without problems, but there's nothing else to check, here
     }
 
+    @Category({ PrivateTests.class })
     @Test
     public void testEncryptConfigsEncryptionException() throws Throwable {
         // test failed encryption of a password: add a password and run; fail
@@ -889,6 +922,7 @@ public class ConfigurationServiceTest {
         assertEquals("property was deleted", 0, props.size());
     }
 
+    @Category({ PrivateTests.class })
     @Test
     public void testEncryptConfigs() throws Throwable {
         // test encrypting a password: add a password and run
@@ -922,6 +956,7 @@ public class ConfigurationServiceTest {
         assertArrayEquals("key is encrypted", "encrypted".toCharArray(), ((Password) props.get("key1")).getPassword());
     }
 
+    @Category({ PrivateTests.class })
     @Test
     public void testEncryptConfigsPreencryptedPassword() throws Throwable {
         // test encrypting a password when the password is already encrypted
