@@ -24,6 +24,13 @@ Copyright (c) 2016 Eurotech and/or its affiliates and others
     <packaging>pom</packaging>
 
     <dependencies>
+        <!-- junit must be included here for maven-surefire-plugin to filter groups -->
+        <!-- org.junit:org.junit:4.12.0(.v201504281640) doesn't work: -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -50,7 +57,7 @@ Copyright (c) 2016 Eurotech and/or its affiliates and others
 
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.12.4</version>
+                <version>2.19.1</version>
                 <executions>
                     <execution>
                         <id>default-test</id>

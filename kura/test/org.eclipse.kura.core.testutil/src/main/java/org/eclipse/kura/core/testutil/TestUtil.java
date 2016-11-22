@@ -44,7 +44,7 @@ public class TestUtil {
 
     /**
      * Returns the current value of a (private) field in an object.
-     * 
+     *
      * @param svc
      * @param fieldName
      * @return
@@ -88,7 +88,7 @@ public class TestUtil {
             return true;
         }
 
-        if (m.getParameterCount() != paramTypes.length) {
+        if (m.getParameterTypes().length != paramTypes.length) {
             return false;
         }
 
@@ -104,7 +104,7 @@ public class TestUtil {
 
     /**
      * Invokes a (private) method on an object.
-     * 
+     *
      * @param svc
      * @param methodName
      * @param paramTypes
@@ -135,7 +135,7 @@ public class TestUtil {
 
     /**
      * Invokes a (private) method on an object.
-     * 
+     *
      * @param svc
      * @param methodName
      * @param params
@@ -148,7 +148,7 @@ public class TestUtil {
 
     /**
      * Sets a value of a (private) field.
-     * 
+     *
      * @param svc
      * @param fieldName
      * @param value
