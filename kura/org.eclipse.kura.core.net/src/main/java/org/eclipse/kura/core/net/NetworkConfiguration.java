@@ -1084,7 +1084,7 @@ public class NetworkConfiguration {
         s_logger.trace("IP address is {}", ipAddressString);
         if (ipAddressString != null && !ipAddressString.isEmpty()) {
             try {
-                IPAddress.parseHostAddress(ipAddressString);
+            	ipAddress = IPAddress.parseHostAddress(ipAddressString);
             } catch (UnknownHostException e) {
                 throw new KuraException(KuraErrorCode.INTERNAL_ERROR, "Could not parse ip address " + ipAddressString);
             }

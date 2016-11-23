@@ -605,7 +605,7 @@ public class ModemConfig implements NetConfig {
         }
 
         if (this.m_ipAddress != null) {
-            if (!this.m_ipAddress.equals(otherConfig)) {
+            if (!this.m_ipAddress.equals(otherConfig.getIpAddress())) {
                 return false;
             }
         } else {

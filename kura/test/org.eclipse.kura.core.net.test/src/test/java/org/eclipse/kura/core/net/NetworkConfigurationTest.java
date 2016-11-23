@@ -13,8 +13,12 @@ import static org.mockito.Mockito.*;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 
 import org.eclipse.kura.KuraErrorCode;
@@ -24,8 +28,10 @@ import org.eclipse.kura.core.net.modem.ModemInterfaceAddressConfigImpl;
 import org.eclipse.kura.core.net.modem.ModemInterfaceConfigImpl;
 import org.eclipse.kura.core.net.util.NetworkUtil;
 import org.eclipse.kura.core.testutil.TestUtil;
+import org.eclipse.kura.core.util.NetUtil;
 import org.eclipse.kura.net.IP4Address;
 import org.eclipse.kura.net.IP6Address;
+import org.eclipse.kura.net.IPAddress;
 import org.eclipse.kura.net.NetConfig;
 import org.eclipse.kura.net.NetConfigIP4;
 import org.eclipse.kura.net.NetConfigIP6;
@@ -37,13 +43,19 @@ import org.eclipse.kura.net.NetInterfaceType;
 import org.eclipse.kura.net.dhcp.DhcpServerConfigIP4;
 import org.eclipse.kura.net.firewall.FirewallAutoNatConfig;
 import org.eclipse.kura.net.modem.ModemConfig;
+import org.eclipse.kura.net.modem.ModemConnectionStatus;
 import org.eclipse.kura.net.modem.ModemConfig.AuthType;
 import org.eclipse.kura.net.modem.ModemConfig.PdpType;
+import org.eclipse.kura.net.modem.ModemConnectionType;
 import org.eclipse.kura.net.modem.ModemInterfaceAddressConfig;
+import org.eclipse.kura.net.modem.ModemPowerMode;
+import org.eclipse.kura.net.modem.ModemTechnologyType;
+import org.eclipse.kura.net.wifi.WifiAccessPoint;
 import org.eclipse.kura.net.wifi.WifiBgscan;
 import org.eclipse.kura.net.wifi.WifiBgscanModule;
 import org.eclipse.kura.net.wifi.WifiCiphers;
 import org.eclipse.kura.net.wifi.WifiConfig;
+import org.eclipse.kura.net.wifi.WifiInterface.Capability;
 import org.eclipse.kura.net.wifi.WifiInterfaceAddressConfig;
 import org.eclipse.kura.net.wifi.WifiMode;
 import org.eclipse.kura.net.wifi.WifiRadioMode;
@@ -1209,18 +1221,389 @@ public class NetworkConfigurationTest {
     //
     // ---------------------------------------------------------------
 
-//	@Test
-//	public void testRecomputeNetworkProperties() {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//		try {
-//			
-//			TestUtil.invokePrivate(config, "recomputeNetworkProperties");
-//			
-//		} catch (Throwable e1) {
-//			fail("unexpected exception");
-//		}
-//	}
+	@Test
+	public void testRecomputeNetworkPropertiesEmpty() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("net.interfaces", "");
+		
+		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+
+		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testRecomputeNetworkPropertiesWithModifiedInterfaces() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+		
+		ArrayList<String> modifiedInterfaceNames = new ArrayList<String>();
+		modifiedInterfaceNames.add("if1");
+		modifiedInterfaceNames.add("if2");
+		config.setModifiedInterfaceNames(modifiedInterfaceNames);
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("modified.interface.names", "if1,if2");
+		expected.put("net.interfaces", "");
+		
+		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+
+		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testRecomputeNetworkPropertiesWithEthernetInterfaces() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl netInterfaceConfig1 = new EthernetInterfaceConfigImpl("if1");
+		netInterfaceConfig1.setState(NetInterfaceState.ACTIVATED);
+		netInterfaceConfig1.setUsbDevice(new UsbBlockDevice("vendorId", "productId", "vendorName", "productName",
+				"usbBusNumber", "usbDevicePath", "deviceNode"));
+		config.addNetInterfaceConfig(netInterfaceConfig1);
+
+		EthernetInterfaceConfigImpl netInterfaceConfig2 = new EthernetInterfaceConfigImpl("if2");
+		ArrayList<NetInterfaceAddressConfig> interfaceAddressConfigs = new ArrayList<NetInterfaceAddressConfig>();
+		interfaceAddressConfigs.add(new NetInterfaceAddressConfigImpl());
+		NetInterfaceAddressConfigImpl interfaceAddressConfig = new NetInterfaceAddressConfigImpl();
+		interfaceAddressConfig.setAddress(IPAddress.parseHostAddress("10.0.0.10"));
+		interfaceAddressConfig.setBroadcast(IPAddress.parseHostAddress("10.0.0.255"));
+		interfaceAddressConfig.setGateway(IPAddress.parseHostAddress("10.0.0.1"));
+		interfaceAddressConfig.setNetmask(IPAddress.parseHostAddress("255.255.255.0"));
+		interfaceAddressConfig.setNetworkPrefixLength((short) 24);
+		ArrayList<IPAddress> dnsServers = new ArrayList<IPAddress>();
+		dnsServers.add(IPAddress.parseHostAddress("10.0.1.1"));
+		dnsServers.add(IPAddress.parseHostAddress("10.0.1.2"));
+		interfaceAddressConfig.setDnsServers(dnsServers);
+		
+		ArrayList<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		
+		NetConfigIP4 netConfig1 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
+		netConfig1.setDhcp(true);
+		netConfig1.setDnsServers(new ArrayList<IP4Address>());
+		netConfigs.add(netConfig1);
+
+		NetConfigIP6 netConfig2 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
+		netConfig2.setDhcp(true);
+		netConfigs.add(netConfig2);
+
+		DhcpServerConfigIP4 netConfig3 = new DhcpServerConfigIP4(
+				"if1",
+				false,
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.0"),
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.1"),
+				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"),
+				1,
+				2,
+				(short) 24,
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.10"),
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"),
+				true,
+				null);
+		netConfigs.add(netConfig3);
+
+		netConfigs.add(new FirewallAutoNatConfig());
+		
+		interfaceAddressConfig.setNetConfigs(netConfigs);
+		interfaceAddressConfigs.add(interfaceAddressConfig);
+		netInterfaceConfig2.setNetInterfaceAddresses(interfaceAddressConfigs);
+		config.addNetInterfaceConfig(netInterfaceConfig2);
+		
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("net.interface.if1.type", "ETHERNET");
+		expected.put("net.interface.if1.config.name", "if1");
+		expected.put("net.interface.if1.config.state", "ACTIVATED");
+		expected.put("net.interface.if1.config.autoconnect", netInterfaceConfig1.isAutoConnect());
+		expected.put("net.interface.if1.config.mtu", netInterfaceConfig1.getMTU());
+		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
+		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
+		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
+		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
+		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
+		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
+		expected.put("net.interface.if1.virtual", netInterfaceConfig1.isVirtual());
+		expected.put("net.interface.if1.usb.vendor.id", "vendorId");
+		expected.put("net.interface.if1.usb.vendor.name", "vendorName");
+		expected.put("net.interface.if1.usb.product.id", "productId");
+		expected.put("net.interface.if1.usb.product.name", "productName");
+		expected.put("net.interface.if1.usb.busNumber", "usbBusNumber");
+		expected.put("net.interface.if1.usb.devicePath", "usbDevicePath");
+		expected.put("net.interface.if1.eth.link.up", netInterfaceConfig1.isLinkUp());
+
+		expected.put("net.interface.if2.type", "ETHERNET");
+		expected.put("net.interface.if2.config.name", "if2");
+		expected.put("net.interface.if2.config.autoconnect", netInterfaceConfig2.isAutoConnect());
+		expected.put("net.interface.if2.config.mtu", netInterfaceConfig2.getMTU());
+		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
+		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
+		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
+		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
+		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
+		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
+		expected.put("net.interface.if2.virtual", netInterfaceConfig2.isVirtual());
+		expected.put("net.interface.if2.eth.link.up", netInterfaceConfig2.isLinkUp());
+		expected.put("net.interface.if2.ip4.address", "10.0.0.10");
+		expected.put("net.interface.if2.ip4.broadcast", "10.0.0.255");
+		expected.put("net.interface.if2.ip4.gateway", "10.0.0.1");
+		expected.put("net.interface.if2.ip4.netmask", "255.255.255.0");
+		expected.put("net.interface.if2.ip4.prefix", (short) 24);
+		expected.put("net.interface.if2.ip4.dnsServers", "10.0.1.1,10.0.1.2");
+		expected.put("net.interface.if2.config.autoconnect", true);
+		expected.put("net.interface.if2.config.ip4.status", "netIPv4StatusEnabledLAN");
+		expected.put("net.interface.if2.config.ip4.dnsServers", "");
+		expected.put("net.interface.if2.config.dhcpClient4.enabled", true);
+		expected.put("net.interface.if2.config.ip6.status", "netIPv6StatusEnabledLAN");
+		expected.put("net.interface.if2.config.dhcpClient6.enabled", true);
+		expected.put("net.interface.if2.config.dhcpServer4.enabled", false);
+		expected.put("net.interface.if2.config.dhcpServer4.defaultLeaseTime", 1);
+		expected.put("net.interface.if2.config.dhcpServer4.maxLeaseTime", 2);
+		expected.put("net.interface.if2.config.dhcpServer4.prefix", (short) 24);
+		expected.put("net.interface.if2.config.dhcpServer4.rangeStart", "10.0.0.10");
+		expected.put("net.interface.if2.config.dhcpServer4.rangeEnd", "10.0.0.15");
+		expected.put("net.interface.if2.config.dhcpServer4.passDns", true);
+		expected.put("net.interface.if2.config.nat.enabled", true);
+		
+		expected.put("net.interfaces", "if2,if1");
+		
+		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+
+		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testRecomputeNetworkPropertiesWithWifiInterfaces() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiInterfaceConfigImpl netInterfaceConfig1 = new WifiInterfaceConfigImpl("if1");
+		netInterfaceConfig1.setCapabilities(null);
+		config.addNetInterfaceConfig(netInterfaceConfig1);
+		
+		WifiInterfaceConfigImpl netInterfaceConfig2 = new WifiInterfaceConfigImpl("if2");
+		netInterfaceConfig2.setCapabilities(EnumSet.noneOf(Capability.class));
+		config.addNetInterfaceConfig(netInterfaceConfig2);
+		
+		WifiInterfaceConfigImpl netInterfaceConfig3 = new WifiInterfaceConfigImpl("if3");
+		netInterfaceConfig3.setCapabilities(EnumSet.of(Capability.CIPHER_CCMP, Capability.CIPHER_TKIP));
+		config.addNetInterfaceConfig(netInterfaceConfig3);
+		
+		ArrayList<WifiInterfaceAddressConfig> interfaceAddressConfigs = new ArrayList<WifiInterfaceAddressConfig>();
+		interfaceAddressConfigs.add(new WifiInterfaceAddressConfigImpl());
+		WifiInterfaceAddressConfigImpl interfaceAddressConfig = new WifiInterfaceAddressConfigImpl();
+		interfaceAddressConfig.setBitrate(42);
+		interfaceAddressConfig.setMode(WifiMode.ADHOC);
+
+		ArrayList<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		WifiConfig netConfig = new WifiConfig();
+		netConfig.setMode(WifiMode.ADHOC);
+		netConfig.setSSID("ssid");
+		netConfig.setDriver("driver");
+		netConfig.setBroadcast(false);
+		netConfig.setPingAccessPoint(false);
+		netConfig.setIgnoreSSID(false);
+		netConfigs.add(netConfig);
+		interfaceAddressConfig.setNetConfigs(netConfigs);
+		
+		interfaceAddressConfigs.add(interfaceAddressConfig);
+		netInterfaceConfig3.setNetInterfaceAddresses(interfaceAddressConfigs);
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("net.interface.if1.type", "WIFI");
+		expected.put("net.interface.if1.config.name", "if1");
+		expected.put("net.interface.if1.config.autoconnect", netInterfaceConfig1.isAutoConnect());
+		expected.put("net.interface.if1.config.mtu", netInterfaceConfig1.getMTU());
+		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
+		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
+		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
+		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
+		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
+		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
+		expected.put("net.interface.if1.virtual", netInterfaceConfig1.isVirtual());
+
+		expected.put("net.interface.if2.type", "WIFI");
+		expected.put("net.interface.if2.config.name", "if2");
+		expected.put("net.interface.if2.config.autoconnect", netInterfaceConfig2.isAutoConnect());
+		expected.put("net.interface.if2.config.mtu", netInterfaceConfig2.getMTU());
+		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
+		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
+		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
+		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
+		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
+		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
+		expected.put("net.interface.if2.virtual", netInterfaceConfig2.isVirtual());
+		expected.put("net.interface.if2.wifi.capabilities", "");
+
+		expected.put("net.interface.if3.type", "WIFI");
+		expected.put("net.interface.if3.config.name", "if3");
+		expected.put("net.interface.if3.config.autoconnect", netInterfaceConfig3.isAutoConnect());
+		expected.put("net.interface.if3.config.mtu", netInterfaceConfig3.getMTU());
+		expected.put("net.interface.if3.driver", netInterfaceConfig3.getDriver());
+		expected.put("net.interface.if3.driver.version", netInterfaceConfig3.getDriverVersion());
+		expected.put("net.interface.if3.firmware.version", netInterfaceConfig3.getFirmwareVersion());
+		expected.put("net.interface.if3.mac", NetUtil.hardwareAddressToString(netInterfaceConfig3.getHardwareAddress()));
+		expected.put("net.interface.if3.loopback", netInterfaceConfig3.isLoopback());
+		expected.put("net.interface.if3.ptp", netInterfaceConfig3.isPointToPoint());
+		expected.put("net.interface.if3.up", netInterfaceConfig3.isUp());
+		expected.put("net.interface.if3.virtual", netInterfaceConfig3.isVirtual());
+		expected.put("net.interface.if3.wifi.capabilities", "CIPHER_TKIP CIPHER_CCMP ");
+		expected.put("net.interface.if3.wifi.bitrate", (long) 42);
+		expected.put("net.interface.if3.wifi.mode", null);
+		expected.put("net.interface.if3.config.wifi.adhoc.ssid", "ssid");
+		expected.put("net.interface.if3.config.wifi.adhoc.driver", "driver");
+		expected.put("net.interface.if3.config.wifi.adhoc.mode", "ADHOC");
+		expected.put("net.interface.if3.config.wifi.adhoc.securityType", "NONE");
+		expected.put("net.interface.if3.config.wifi.adhoc.channel", "");
+		expected.put("net.interface.if3.config.wifi.adhoc.passphrase", new Password(""));
+		expected.put("net.interface.if3.config.wifi.adhoc.hardwareMode", "");
+		expected.put("net.interface.if3.config.wifi.adhoc.broadcast", false);
+		expected.put("net.interface.if3.config.wifi.adhoc.bgscan", "");
+		expected.put("net.interface.if3.config.wifi.adhoc.pingAccessPoint", false);
+		expected.put("net.interface.if3.config.wifi.adhoc.ignoreSSID", false);
+		
+		expected.put("net.interfaces", "if2,if1,if3");
+		
+		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+
+		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testRecomputeNetworkPropertiesWithModemInterfaces() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		ModemInterfaceConfigImpl netInterfaceConfig1 = new ModemInterfaceConfigImpl("if1");
+		netInterfaceConfig1.setRevisionId(null);
+		netInterfaceConfig1.setTechnologyTypes(null);
+		netInterfaceConfig1.setPowerMode(null);
+		config.addNetInterfaceConfig(netInterfaceConfig1);
+
+		ModemInterfaceConfigImpl netInterfaceConfig2 = new ModemInterfaceConfigImpl("if2");
+		netInterfaceConfig2.setRevisionId(new String[] {"rev1", "rev2"});
+		
+		ArrayList<ModemTechnologyType> technologyTypes = new ArrayList<ModemTechnologyType>();
+		technologyTypes.add(ModemTechnologyType.CDMA);
+		technologyTypes.add(ModemTechnologyType.EVDO);
+		netInterfaceConfig2.setTechnologyTypes(technologyTypes);
+		
+		ArrayList<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
+		ModemInterfaceAddressConfigImpl interfaceAddressConfig1 = new ModemInterfaceAddressConfigImpl();
+		interfaceAddressConfig1.setConnectionType(null);
+		interfaceAddressConfig1.setConnectionStatus(null);
+		interfaceAddresses.add(interfaceAddressConfig1);
+		ModemInterfaceAddressConfigImpl interfaceAddressConfig2 = new ModemInterfaceAddressConfigImpl();
+		interfaceAddressConfig2.setConnectionType(ModemConnectionType.PPP);
+		interfaceAddressConfig2.setConnectionStatus(ModemConnectionStatus.CONNECTED);
+		ArrayList<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		ModemConfig netConfig = new ModemConfig();
+		netConfig.setApn("apn");
+		netConfig.setAuthType(null);
+		netConfig.setDataCompression(42);
+		netConfig.setDialString("dialString");
+		netConfig.setHeaderCompression(100);
+		netConfig.setIpAddress(null);
+		netConfig.setPassword("password");
+		netConfig.setPdpType(null);
+		netConfig.setPppNumber(123);
+		netConfig.setPersist(true);
+		netConfig.setMaxFail(10);
+		netConfig.setIdle(20);
+		netConfig.setActiveFilter("activeFilter");
+		netConfig.setResetTimeout(30);
+		netConfig.setLcpEchoInterval(40);
+		netConfig.setLcpEchoFailure(50);
+		netConfig.setProfileID(60);
+		netConfig.setUsername("username");
+		netConfig.setEnabled(true);
+		netConfig.setGpsEnabled(true);
+		netConfigs.add(netConfig);
+		netConfigs.add(new MockConfig());
+		interfaceAddressConfig2.setNetConfigs(netConfigs);
+		interfaceAddresses.add(interfaceAddressConfig2);
+		netInterfaceConfig2.setNetInterfaceAddresses(interfaceAddresses);
+		
+		netInterfaceConfig2.setPowerMode(ModemPowerMode.LOW_POWER);
+		config.addNetInterfaceConfig(netInterfaceConfig2);
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("net.interface.if1.type", "MODEM");
+		expected.put("net.interface.if1.config.name", "if1");
+		expected.put("net.interface.if1.config.autoconnect", netInterfaceConfig1.isAutoConnect());
+		expected.put("net.interface.if1.config.mtu", netInterfaceConfig1.getMTU());
+		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
+		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
+		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
+		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
+		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
+		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
+		expected.put("net.interface.if1.virtual", netInterfaceConfig1.isVirtual());
+		expected.put("net.interface.if1.manufacturer", netInterfaceConfig1.getManufacturer());
+		expected.put("net.interface.if1.model", netInterfaceConfig1.getModel());
+		expected.put("net.interface.if1.revisionId", "");
+		expected.put("net.interface.if1.serialNum", netInterfaceConfig1.getSerialNumber());
+		expected.put("net.interface.if1.technologyTypes", "");
+		expected.put("net.interface.if1.config.identifier", netInterfaceConfig1.getModemIdentifier());
+		expected.put("net.interface.if1.config.powerMode", "UNKNOWN");
+		expected.put("net.interface.if1.config.pppNum", netInterfaceConfig1.getPppNum());
+		expected.put("net.interface.if1.config.poweredOn", netInterfaceConfig1.isPoweredOn());
+
+		expected.put("net.interface.if2.type", "MODEM");
+		expected.put("net.interface.if2.config.name", "if2");
+		expected.put("net.interface.if2.config.autoconnect", netInterfaceConfig2.isAutoConnect());
+		expected.put("net.interface.if2.config.mtu", netInterfaceConfig2.getMTU());
+		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
+		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
+		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
+		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
+		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
+		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
+		expected.put("net.interface.if2.virtual", netInterfaceConfig2.isVirtual());
+		expected.put("net.interface.if2.manufacturer", netInterfaceConfig2.getManufacturer());
+		expected.put("net.interface.if2.model", netInterfaceConfig2.getModel());
+		expected.put("net.interface.if2.revisionId", "rev1,rev2");
+		expected.put("net.interface.if2.serialNum", netInterfaceConfig2.getSerialNumber());
+		expected.put("net.interface.if2.technologyTypes", "CDMA,EVDO");
+		expected.put("net.interface.if2.config.identifier", netInterfaceConfig2.getModemIdentifier());
+		expected.put("net.interface.if2.config.powerMode", "LOW_POWER");
+		expected.put("net.interface.if2.config.pppNum", netInterfaceConfig2.getPppNum());
+		expected.put("net.interface.if2.config.poweredOn", netInterfaceConfig2.isPoweredOn());
+		expected.put("net.interface.if2.config.connection.type", "PPP");
+		expected.put("net.interface.if2.config.connection.status", "CONNECTED");
+		expected.put("net.interface.if2.config.apn", "apn");
+		expected.put("net.interface.if2.config.authType", "");
+		expected.put("net.interface.if2.config.dataCompression", 42);
+		expected.put("net.interface.if2.config.dialString", "dialString");
+		expected.put("net.interface.if2.config.headerCompression", 100);
+		expected.put("net.interface.if2.config.ipAddress", "");
+		expected.put("net.interface.if2.config.password", "password");
+		expected.put("net.interface.if2.config.pdpType", "");
+		expected.put("net.interface.if2.config.pppNum", 123);
+		expected.put("net.interface.if2.config.persist", true);
+		expected.put("net.interface.if2.config.maxFail", 10);
+		expected.put("net.interface.if2.config.idle", 20);
+		expected.put("net.interface.if2.config.activeFilter", "activeFilter");
+		expected.put("net.interface.if2.config.resetTimeout", 30);
+		expected.put("net.interface.if2.config.lcpEchoInterval", 40);
+		expected.put("net.interface.if2.config.lcpEchoFailure", 50);
+		expected.put("net.interface.if2.config.profileId", 60);
+		expected.put("net.interface.if2.config.username", "username");
+		expected.put("net.interface.if2.config.enabled", true);
+		expected.put("net.interface.if2.config.gpsEnabled", true);
+
+		expected.put("net.interfaces", "if2,if1");
+		
+		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
+
+		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
+		assertMapEquals(expected, properties);
+	}
 
 	@Test
 	public void testAddWifiConfigIP4PropertiesWifiModeNull() throws Throwable {
@@ -1525,62 +1908,464 @@ public class NetworkConfigurationTest {
 		assertEquals(expected, wifiConfig);
 	}
 
-//	@Test
-//	public void testAddModemConfigProperties() {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//		try {
-//			
-//			TestUtil.invokePrivate(config, "addModemConfigProperties");
-//			
-//		} catch (Throwable e1) {
-//			fail("unexpected exception");
-//		}
-//	}
-//
-//	@Test
-//	public void testGetModemConfigMinimal1() throws Throwable {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//		String netIfConfigPrefix = "prefix.";
-//
-//		HashMap<String, Object> properties = new HashMap<String, Object>();
-//		properties.put("prefix.", null);
-//		
-//		ModemConfig expected = new ModemConfig();
-//		//expected.
-//		
-//		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(
-//				config, "getModemConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
-//
-//		assertEquals(expected, modemConfig);
-//	}
-//
-//	@Test
-//	public void testAddNetConfigIP4Properties() {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//		try {
-//			
-//			TestUtil.invokePrivate(config, "addNetConfigIP4Properties");
-//			
-//		} catch (Throwable e1) {
-//			fail("unexpected exception");
-//		}
-//	}
-//
-//	@Test
-//	public void testAddNetConfigIP6Properties() {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//		try {
-//			
-//			TestUtil.invokePrivate(config, "addNetConfigIP6Properties");
-//			
-//		} catch (Throwable e1) {
-//			fail("unexpected exception");
-//		}
-//	}
+	@Test
+	public void testAddModemConfigProperties1() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.apn", "apn");
+		expected.put("prefix.authType", "");
+		expected.put("prefix.dataCompression", 42);
+		expected.put("prefix.dialString", "dialString");
+		expected.put("prefix.headerCompression", 100);
+		expected.put("prefix.ipAddress", "");
+		expected.put("prefix.password", "password");
+		expected.put("prefix.pdpType", "");
+		expected.put("prefix.pppNum", 123);
+		expected.put("prefix.persist", true);
+		expected.put("prefix.maxFail", 10);
+		expected.put("prefix.idle", 20);
+		expected.put("prefix.activeFilter", "activeFilter");
+		expected.put("prefix.resetTimeout", 30);
+		expected.put("prefix.lcpEchoInterval", 40);
+		expected.put("prefix.lcpEchoFailure", 50);
+		expected.put("prefix.profileId", 60);
+		expected.put("prefix.username", "username");
+		expected.put("prefix.enabled", true);
+		expected.put("prefix.gpsEnabled", true);
+		
+		ModemConfig modemConfig = new ModemConfig();
+		modemConfig.setApn("apn");
+		modemConfig.setAuthType(null);
+		modemConfig.setDataCompression(42);
+		modemConfig.setDialString("dialString");
+		modemConfig.setHeaderCompression(100);
+		modemConfig.setIpAddress(null);
+		modemConfig.setPassword("password");
+		modemConfig.setPdpType(null);
+		modemConfig.setPppNumber(123);
+		modemConfig.setPersist(true);
+		modemConfig.setMaxFail(10);
+		modemConfig.setIdle(20);
+		modemConfig.setActiveFilter("activeFilter");
+		modemConfig.setResetTimeout(30);
+		modemConfig.setLcpEchoInterval(40);
+		modemConfig.setLcpEchoFailure(50);
+		modemConfig.setProfileID(60);
+		modemConfig.setUsername("username");
+		modemConfig.setEnabled(true);
+		modemConfig.setGpsEnabled(true);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addModemConfigProperties", modemConfig, prefix, properties);
+		
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddModemConfigProperties2() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.apn", "apn");
+		expected.put("prefix.authType", "AUTO");
+		expected.put("prefix.dataCompression", 42);
+		expected.put("prefix.dialString", "dialString");
+		expected.put("prefix.headerCompression", 100);
+		expected.put("prefix.ipAddress", "10.0.0.1");
+		expected.put("prefix.password", "password");
+		expected.put("prefix.pdpType", "IP");
+		expected.put("prefix.pppNum", 123);
+		expected.put("prefix.persist", true);
+		expected.put("prefix.maxFail", 10);
+		expected.put("prefix.idle", 20);
+		expected.put("prefix.activeFilter", "activeFilter");
+		expected.put("prefix.resetTimeout", 30);
+		expected.put("prefix.lcpEchoInterval", 40);
+		expected.put("prefix.lcpEchoFailure", 50);
+		expected.put("prefix.profileId", 60);
+		expected.put("prefix.username", "username");
+		expected.put("prefix.enabled", true);
+		expected.put("prefix.gpsEnabled", true);
+		
+		ModemConfig modemConfig = new ModemConfig();
+		modemConfig.setApn("apn");
+		modemConfig.setAuthType(AuthType.AUTO);
+		modemConfig.setDataCompression(42);
+		modemConfig.setDialString("dialString");
+		modemConfig.setHeaderCompression(100);
+		modemConfig.setIpAddress(IP4Address.parseHostAddress("10.0.0.1"));
+		modemConfig.setPassword("password");
+		modemConfig.setPdpType(PdpType.IP);
+		modemConfig.setPppNumber(123);
+		modemConfig.setPersist(true);
+		modemConfig.setMaxFail(10);
+		modemConfig.setIdle(20);
+		modemConfig.setActiveFilter("activeFilter");
+		modemConfig.setResetTimeout(30);
+		modemConfig.setLcpEchoInterval(40);
+		modemConfig.setLcpEchoFailure(50);
+		modemConfig.setProfileID(60);
+		modemConfig.setUsername("username");
+		modemConfig.setEnabled(true);
+		modemConfig.setGpsEnabled(true);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addModemConfigProperties", modemConfig, prefix, properties);
+		
+		assertMapEquals(expected, properties);
+	}
+
+	@Test
+	public void testGetModemConfigNull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.apn", "apn");
+		properties.put("prefix.authType", null);
+		properties.put("prefix.dataCompression", null);
+		properties.put("prefix.dialString", "dialString");
+		properties.put("prefix.headerCompression", null);
+		properties.put("prefix.ipAddress", null);
+		properties.put("prefix.password", "password");
+		properties.put("prefix.pdpType", null);
+		properties.put("prefix.pppNum", null);
+		properties.put("prefix.persist", null);
+		properties.put("prefix.maxFail", null);
+		properties.put("prefix.idle", null);
+		properties.put("prefix.activeFilter", null);
+		properties.put("prefix.resetTimeout", null);
+		properties.put("prefix.lcpEchoInterval", null);
+		properties.put("prefix.lcpEchoFailure", null);
+		properties.put("prefix.profileId", null);
+		properties.put("prefix.username", "username");
+		properties.put("prefix.enabled", null);
+		properties.put("prefix.gpsEnabled", null);
+		
+		ModemConfig expected = new ModemConfig();
+		expected.setApn("apn");
+		expected.setAuthType(AuthType.NONE);
+		expected.setDialString("dialString");
+		expected.setIpAddress(null);
+		expected.setPassword("password");
+		expected.setPdpType(PdpType.UNKNOWN);
+		expected.setUsername("username");
+		expected.setEnabled(false);
+		expected.setGpsEnabled(false);
+		
+		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+
+		assertEquals(expected, modemConfig);
+	}
+
+	@Test
+	public void testGetModemConfigEmpty() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.apn", "apn");
+		properties.put("prefix.authType", "");
+		properties.put("prefix.dataCompression", 1);
+		properties.put("prefix.dialString", "dialString");
+		properties.put("prefix.headerCompression", 2);
+		properties.put("prefix.ipAddress", "");
+		properties.put("prefix.password", "password");
+		properties.put("prefix.pdpType", "");
+		properties.put("prefix.pppNum", 4);
+		properties.put("prefix.persist", true);
+		properties.put("prefix.maxFail", 5);
+		properties.put("prefix.idle", 6);
+		properties.put("prefix.activeFilter", "activeFilter");
+		properties.put("prefix.resetTimeout", 7);
+		properties.put("prefix.lcpEchoInterval", 8);
+		properties.put("prefix.lcpEchoFailure", 9);
+		properties.put("prefix.profileId", 10);
+		properties.put("prefix.username", "username");
+		properties.put("prefix.enabled", true);
+		properties.put("prefix.gpsEnabled", true);
+		
+		ModemConfig expected = new ModemConfig();
+		expected.setApn("apn");
+		expected.setAuthType(AuthType.NONE);
+		expected.setDataCompression(1);
+		expected.setDialString("dialString");
+		expected.setHeaderCompression(2);
+		expected.setIpAddress(null);
+		expected.setPassword("password");
+		expected.setPdpType(PdpType.UNKNOWN);
+		expected.setPppNumber(4);
+		expected.setPersist(true);
+		expected.setMaxFail(5);
+		expected.setIdle(6);
+		expected.setActiveFilter("activeFilter");
+		expected.setResetTimeout(7);
+		expected.setLcpEchoInterval(8);
+		expected.setLcpEchoFailure(9);
+		expected.setProfileID(10);
+		expected.setUsername("username");
+		expected.setEnabled(true);
+		expected.setGpsEnabled(true);
+		
+		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+
+		assertEquals(expected, modemConfig);
+	}
+
+	@Test
+	public void testGetModemConfigAll() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+ 
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.apn", "apn");
+		properties.put("prefix.authType", "AUTO");
+		properties.put("prefix.dataCompression", 1);
+		properties.put("prefix.dialString", "dialString");
+		properties.put("prefix.headerCompression", 2);
+		properties.put("prefix.ipAddress", "10.0.0.1");
+		properties.put("prefix.password", "password");
+		properties.put("prefix.pdpType", "IP");
+		properties.put("prefix.pppNum", 4);
+		properties.put("prefix.persist", true);
+		properties.put("prefix.maxFail", 5);
+		properties.put("prefix.idle", 6);
+		properties.put("prefix.activeFilter", "activeFilter");
+		properties.put("prefix.resetTimeout", 7);
+		properties.put("prefix.lcpEchoInterval", 8);
+		properties.put("prefix.lcpEchoFailure", 9);
+		properties.put("prefix.profileId", 10);
+		properties.put("prefix.username", "username");
+		properties.put("prefix.enabled", true);
+		properties.put("prefix.gpsEnabled", true);
+		
+		ModemConfig expected = new ModemConfig();
+		expected.setApn("apn");
+		expected.setAuthType(AuthType.AUTO);
+		expected.setDataCompression(1);
+		expected.setDialString("dialString");
+		expected.setHeaderCompression(2);
+		expected.setIpAddress(IPAddress.parseHostAddress("10.0.0.1"));
+		expected.setPassword("password");
+		expected.setPdpType(PdpType.IP);
+		expected.setPppNumber(4);
+		expected.setPersist(true);
+		expected.setMaxFail(5);
+		expected.setIdle(6);
+		expected.setActiveFilter("activeFilter");
+		expected.setResetTimeout(7);
+		expected.setLcpEchoInterval(8);
+		expected.setLcpEchoFailure(9);
+		expected.setProfileID(10);
+		expected.setUsername("username");
+		expected.setEnabled(true);
+		expected.setGpsEnabled(true);
+		
+		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+
+		assertEquals(expected, modemConfig);
+	}
+
+	@Test(expected = KuraException.class)
+	public void testGetModemConfigInvalidAuthType() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+ 
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.authType", "xyz");
+		
+		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+	}
+
+	@Test(expected = KuraException.class)
+	public void testGetModemConfigInvalidIPAddress() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+ 
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.ipAddress", "1.2.3.4.5");
+		
+		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+	}
+
+	@Test(expected = KuraException.class)
+	public void testGetModemConfigInvalidPdpType() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+ 
+		String prefix = "prefix.";
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("prefix.pdpType", "xyz");
+		
+		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
+	}
+
+	@Test
+	public void testAddNetConfigIP4PropertiesWithDhcp() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
+		netConfig.setDhcp(true);
+		ArrayList<IP4Address> dnsServers = new ArrayList<IP4Address>();
+		dnsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.0.1"));
+		dnsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.0.2"));
+		netConfig.setDnsServers(dnsServers);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.autoconnect", true);
+		expected.put("prefix.ip4.status", "netIPv4StatusEnabledLAN");
+		expected.put("prefix.ip4.dnsServers", "10.0.0.1,10.0.0.2");
+		expected.put("prefix.dhcpClient4.enabled", true);
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddNetConfigIP4PropertiesWithoutDhcpMinimal() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
+		netConfig.setDhcp(false);
+		netConfig.setDnsServers(null);
+		netConfig.setNetworkPrefixLength((short) 24);
+		netConfig.setWinsServers(null);
+		netConfig.setDomains(null);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.autoconnect", true);
+		expected.put("prefix.ip4.status", "netIPv4StatusEnabledLAN");
+		expected.put("prefix.ip4.dnsServers", "");
+		expected.put("prefix.dhcpClient4.enabled", false);
+		expected.put("prefix.ip4.address", "");
+		expected.put("prefix.ip4.prefix", (short) 24);
+		expected.put("prefix.ip4.gateway", "");
+		expected.put("prefix.winsServers", "");
+		expected.put("prefix.domains", "");
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
+	
+	@Test
+	public void testAddNetConfigIP4PropertiesWithoutDhcpFull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
+		netConfig.setDhcp(false);
+		netConfig.setAddress((IP4Address) IPAddress.parseHostAddress("10.0.0.1")); 
+		netConfig.setNetworkPrefixLength((short) 24); 
+		netConfig.setGateway((IP4Address) IPAddress.parseHostAddress("10.0.0.2")); 
+		ArrayList<IP4Address> winsServers = new ArrayList<IP4Address>();
+		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.1.1"));
+		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.1.2"));
+		netConfig.setWinsServers(winsServers);
+		ArrayList<String> domains = new ArrayList<String>();
+		domains.add("domain1");
+		domains.add("domain2");
+		netConfig.setDomains(domains);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.autoconnect", true);
+		expected.put("prefix.ip4.status", "netIPv4StatusEnabledLAN");
+		expected.put("prefix.ip4.dnsServers", "");
+		expected.put("prefix.dhcpClient4.enabled", false);
+		expected.put("prefix.ip4.address", "10.0.0.1");
+		expected.put("prefix.ip4.prefix", (short) 24);
+		expected.put("prefix.ip4.gateway", "10.0.0.2");
+		expected.put("prefix.winsServers", "10.0.1.1,10.0.1.2");
+		expected.put("prefix.domains", "domain1,domain2");
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddNetConfigIP6PropertiesWithDhcp() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP6 netConfig = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
+		netConfig.setDhcp(true);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
+		expected.put("prefix.dhcpClient6.enabled", true);
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddNetConfigIP6PropertiesWithoutDhcpMinimal() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP6 netConfig = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
+		netConfig.setDhcp(false);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
+		expected.put("prefix.dhcpClient6.enabled", false);
+		expected.put("prefix.ip6.dnsServers", "");
+		expected.put("prefix.domains", "");
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
+
+	@Test
+	public void testAddNetConfigIP6PropertiesWithoutDhcpFull() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		NetConfigIP6 netConfig = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
+		netConfig.setDhcp(false);
+		netConfig.setAddress((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:8329"));
+		ArrayList<IP6Address> dnsServers = new ArrayList<IP6Address>();
+		dnsServers.add((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:1000"));
+		dnsServers.add((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:1001"));
+		netConfig.setDnsServers(dnsServers);
+		ArrayList<String> domains = new ArrayList<String>();
+		domains.add("domain1");
+		domains.add("domain2");
+		netConfig.setDomains(domains);
+		
+		String prefix = "prefix.";
+		HashMap<String, Object> expected = new HashMap<String, Object>();
+		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
+		expected.put("prefix.dhcpClient6.enabled", false);
+		expected.put("prefix.address", "2001:db8:0:0:0:ff00:42:8329");
+		expected.put("prefix.ip6.dnsServers", "2001:db8:0:0:0:ff00:42:1000,2001:db8:0:0:0:ff00:42:1001");
+		expected.put("prefix.domains", "domain1,domain2");
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
+		assertEquals(expected, properties);
+	}
 
 	@Test
 	public void testAddDhcpServerConfig4() throws Throwable {
@@ -1659,13 +2444,18 @@ public class NetworkConfigurationTest {
 		NetInterfaceType type = NetInterfaceType.LOOPBACK;
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("net.interface.if1.type", "LOOPBACK");
-		properties.put("net.interface.if1.autoconnect", true);
+		properties.put("net.interface.if1.config.autoconnect", true);
 
         LoopbackInterfaceConfigImpl loopbackInterfaceConfig = new LoopbackInterfaceConfigImpl(interfaceName);
         List<NetInterfaceAddressConfig> loopbackInterfaceAddressConfigs = new ArrayList<NetInterfaceAddressConfig>();
-        loopbackInterfaceAddressConfigs.add(new NetInterfaceAddressConfigImpl());
+        NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+        addressConfig.setNetConfigs(netConfigs);
+        loopbackInterfaceAddressConfigs.add(addressConfig);
         loopbackInterfaceConfig.setNetInterfaceAddresses(loopbackInterfaceAddressConfigs);
         loopbackInterfaceConfig.setAutoConnect(true);
+        loopbackInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
         
         HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
         		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
@@ -1677,19 +2467,151 @@ public class NetworkConfigurationTest {
 				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
 						config, "m_netInterfaceConfigs"));
 	}
+
+	@Test
+	public void testAddInterfaceConfigurationWifi() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = NetInterfaceType.WIFI;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "WIFI");
+		properties.put("net.interface.if1.config.autoconnect", true);
+		
+		properties.put("net.interface.if1.config.wifi.master.ssid", "ssid");
+		properties.put("net.interface.if1.config.wifi.master.passphrase", "passphrase");
+		
+		properties.put("net.interface.if1.config.wifi.infra.ssid", "ssid");
+		properties.put("net.interface.if1.config.wifi.infra.passphrase", "passphrase");
+
+        WifiInterfaceConfigImpl wifiInterfaceConfig = new WifiInterfaceConfigImpl(interfaceName);
+        List<WifiInterfaceAddressConfig> wifiInterfaceAddressConfigs = new ArrayList<WifiInterfaceAddressConfig>();
+        WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
+        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+        
+        WifiConfig wifiConfig1 = new WifiConfig(
+        		WifiMode.MASTER, "ssid", null, WifiSecurity.NONE, "passphrase", "", false, null);
+        wifiConfig1.setDriver("");
+        netConfigs.add(wifiConfig1);
+
+        WifiConfig wifiConfig2 = new WifiConfig(
+        		WifiMode.INFRA, "ssid", null, WifiSecurity.NONE, "passphrase", "", false, new WifiBgscan(""));
+        wifiConfig2.setDriver("");
+        netConfigs.add(wifiConfig2);
+        
+        addressConfig.setNetConfigs(netConfigs);
+        wifiInterfaceAddressConfigs.add(addressConfig);
+        wifiInterfaceConfig.setNetInterfaceAddresses(wifiInterfaceAddressConfigs);
+        wifiInterfaceConfig.setAutoConnect(true);
+        wifiInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
+        
+        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
+        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+        expected.put(interfaceName, wifiInterfaceConfig);
+        
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		assertMapEquals(expected,
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs"));
+	}
+
+	@Test
+	public void testAddInterfaceConfigurationModem() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = NetInterfaceType.MODEM;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "MODEM");
+		properties.put("net.interface.if1.config.autoconnect", true);
+
+        ModemInterfaceConfigImpl modemInterfaceConfig = new ModemInterfaceConfigImpl(interfaceName);
+        List<ModemInterfaceAddressConfig> modemInterfaceAddressConfigs = new ArrayList<ModemInterfaceAddressConfig>();
+        ModemInterfaceAddressConfigImpl addressConfig = new ModemInterfaceAddressConfigImpl();
+        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+        
+        ModemConfig modemConfig = new ModemConfig();
+        modemConfig.setDialString(null);
+        modemConfig.setPdpType(PdpType.UNKNOWN);
+        modemConfig.setApn(null);
+        modemConfig.setUsername(null);
+        modemConfig.setPassword(null);
+        netConfigs.add(modemConfig);
+        
+        addressConfig.setNetConfigs(netConfigs);
+        modemInterfaceAddressConfigs.add(addressConfig);
+        modemInterfaceConfig.setNetInterfaceAddresses(modemInterfaceAddressConfigs);
+        modemInterfaceConfig.setAutoConnect(true);
+        modemInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
+        
+        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
+        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+        expected.put(interfaceName, modemInterfaceConfig);
+        
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		assertMapEquals(expected,
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs"));
+	}
 	
+	@Test
+	public void testAddInterfaceConfigurationUnknown() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = NetInterfaceType.UNKNOWN;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs");
+		assertTrue(netInterfaceConfigs.isEmpty());
+	}
 	
-	
-	
-	
-	
-	
-	
+	@Test
+	public void testAddInterfaceConfigurationUnsupported() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		String interfaceName = "if1";
+		NetInterfaceType type = NetInterfaceType.ADSL;
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		
+		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
+		
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
+				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
+						config, "m_netInterfaceConfigs");
+		assertTrue(netInterfaceConfigs.isEmpty());
+	}
+
+//	@Test
+//	public void testPopulateNetInterfaceConfiguration() throws Throwable {
+//		NetworkConfiguration config = new NetworkConfiguration();
+//
+//
+//		
+//		
+//		
+//		
+//		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration");
+//		
+//		
+//		
+//		
+//		
+//	}
+
 	private <T> void assertMapEquals(Map<String, T> expected, Map<String, T> actual) {
 		assertEquals("Size", expected.size(), actual.size());
 		
 		for (Map.Entry<String, T> entry: expected.entrySet()) {
-			assertEquals("Item", entry.getValue(), actual.get(entry.getKey()));
+			assertEquals("Key: " + entry.getKey(), entry.getValue(), actual.get(entry.getKey()));
 		}
 	}
 }
