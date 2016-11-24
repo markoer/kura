@@ -61,6 +61,7 @@ import org.eclipse.kura.net.wifi.WifiMode;
 import org.eclipse.kura.net.wifi.WifiRadioMode;
 import org.eclipse.kura.net.wifi.WifiSecurity;
 import org.eclipse.kura.usb.UsbBlockDevice;
+import org.eclipse.kura.usb.UsbNetDevice;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
@@ -72,7 +73,7 @@ public class NetworkConfigurationTest {
 	@Test
 	public void testNetworkConfiguration() {
 		NetworkConfiguration config = new NetworkConfiguration();
-		
+
 		assertTrue(config.getNetInterfaceConfigs().isEmpty());
 	}
 
@@ -80,7 +81,7 @@ public class NetworkConfigurationTest {
 	public void testNetworkConfigurationEmpty() {
 		try {
 			Map<String, Object> properties = new HashMap<String, Object>();
-			
+
 			NetworkConfiguration config = new NetworkConfiguration(properties);
 
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
@@ -95,30 +96,31 @@ public class NetworkConfigurationTest {
 	@Test
 	public void testNetworkConfigurationWithAvailableInterfaces() {
 		try {
-			String[] interfaces = new String[] {"if1", "if2"};
-			
+			String[] interfaces = new String[] { "if1", "if2" };
+
 			Map<String, Object> properties = new HashMap<String, Object>();
 			properties.put("net.interfaces", interfaces);
 			properties.put("net.interface.if1.type", "ETHERNET");
-			
+
 			NetworkConfiguration config = new NetworkConfiguration(properties);
 
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 
 			List<NetConfig> configs = new ArrayList<NetConfig>();
 			configs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
-			
+			configs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
+
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 			addressConfig.setNetConfigs(configs);
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(addressConfig);
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setState(NetInterfaceState.DISCONNECTED);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
- 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
+
+			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
 			assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
@@ -133,26 +135,27 @@ public class NetworkConfigurationTest {
 			Map<String, Object> properties = new HashMap<String, Object>();
 			properties.put("net.interfaces", "if1,if2");
 			properties.put("net.interface.if1.type", "ETHERNET");
-			
+
 			NetworkConfiguration config = new NetworkConfiguration(properties);
 
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 
 			List<NetConfig> configs = new ArrayList<NetConfig>();
 			configs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
-			
+			configs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false));
+
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 			addressConfig.setNetConfigs(configs);
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(addressConfig);
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setState(NetInterfaceState.DISCONNECTED);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
- 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
- 			assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
+
+			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
+			assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
 		} catch (KuraException e) {
@@ -165,7 +168,7 @@ public class NetworkConfigurationTest {
 		try {
 			Map<String, Object> properties = new HashMap<String, Object>();
 			properties.put("modified.interface.names", "if1,if2");
-			
+
 			NetworkConfiguration config = new NetworkConfiguration(properties);
 
 			assertEquals(2, config.getModifiedInterfaceNames().size());
@@ -184,14 +187,14 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
-		
+
 		List<String> modifiedInterfaceNames = new ArrayList<String>();
 		modifiedInterfaceNames.add("if1");
 		modifiedInterfaceNames.add("if2");
 		config.setModifiedInterfaceNames(modifiedInterfaceNames);
 		assertEquals(modifiedInterfaceNames, config.getModifiedInterfaceNames());
 		assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
-		
+
 		modifiedInterfaceNames.clear();
 		modifiedInterfaceNames.add("if3");
 		config.setModifiedInterfaceNames(modifiedInterfaceNames);
@@ -204,7 +207,7 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
-		
+
 		List<String> modifiedInterfaceNames = null;
 		config.setModifiedInterfaceNames(modifiedInterfaceNames);
 		assertNull(config.getModifiedInterfaceNames());
@@ -216,23 +219,23 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
-		
+
 		List<String> modifiedInterfaceNames = new ArrayList<String>();
 		config.setModifiedInterfaceNames(modifiedInterfaceNames);
 		assertNull(config.getModifiedInterfaceNames());
 		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
 	}
-	
+
 	@Test
 	public void testAccept() {
 		NetworkConfiguration config = new NetworkConfiguration();
 		NetworkConfigurationVisitor visitor = mock(NetworkConfigurationVisitor.class);
-		
+
 		try {
 			Mockito.doNothing().when(visitor).visit(any(NetworkConfiguration.class));
 
 			config.accept(visitor);
-			
+
 			verify(visitor, times(1)).visit(config);
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -243,9 +246,10 @@ public class NetworkConfigurationTest {
 	public void testAcceptWithException() {
 		NetworkConfiguration config = new NetworkConfiguration();
 		NetworkConfigurationVisitor visitor = mock(NetworkConfigurationVisitor.class);
-		
+
 		try {
-			Mockito.doThrow(new KuraException(KuraErrorCode.INTERNAL_ERROR)).when(visitor).visit(any(NetworkConfiguration.class));
+			Mockito.doThrow(new KuraException(KuraErrorCode.INTERNAL_ERROR)).when(visitor)
+					.visit(any(NetworkConfiguration.class));
 
 			config.accept(visitor);
 			fail("exception was expected");
@@ -253,7 +257,7 @@ public class NetworkConfigurationTest {
 			assertEquals(KuraErrorCode.INTERNAL_ERROR, e.getCode());
 		}
 	}
-	
+
 	@Test
 	public void testAddNetInterfaceConfig() {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -274,9 +278,9 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.LOOPBACK, netConfig);
-			
+
 			// Check for success
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
 		} catch (KuraException e) {
@@ -290,10 +294,10 @@ public class NetworkConfigurationTest {
 			// Prepare network configuration
 			NetInterfaceAddressConfigImpl interfaceAddressConfig = new NetInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
-			
+
 			LoopbackInterfaceConfigImpl interfaceConfig = new LoopbackInterfaceConfigImpl("if1");
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 
@@ -302,27 +306,27 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.ETHERNET, netConfig);
-			
+
 			// Check for success
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(netConfig);
-			
+
 			interfaceAddressConfig = new NetInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
+
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
 	}
-	
+
 	@Test
 	public void testAddNetConfigEthernetEmpty() {
 		try {
@@ -331,9 +335,9 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.ETHERNET, netConfig);
-			
+
 			// Check for success
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
 		} catch (KuraException e) {
@@ -347,10 +351,10 @@ public class NetworkConfigurationTest {
 			// Prepare network configuration
 			NetInterfaceAddressConfigImpl interfaceAddressConfig = new NetInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 
@@ -359,27 +363,27 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.ETHERNET, netConfig);
-			
+
 			// Check for success
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(netConfig);
-			
+
 			interfaceAddressConfig = new NetInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
+
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
 	}
-	
+
 	@Test
 	public void testAddNetConfigWifiEmpty() {
 		try {
@@ -388,9 +392,9 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.WIFI, netConfig);
-			
+
 			// Check for success
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
 		} catch (KuraException e) {
@@ -404,10 +408,10 @@ public class NetworkConfigurationTest {
 			// Prepare network configuration
 			WifiInterfaceAddressConfigImpl interfaceAddressConfig = new WifiInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
-			
+
 			List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
-			
+
 			WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 
@@ -416,20 +420,20 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.WIFI, netConfig);
-			
+
 			// Check for success
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(netConfig);
-			
+
 			interfaceAddressConfig = new WifiInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
+
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
 		} catch (KuraException e) {
@@ -445,9 +449,9 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.MODEM, netConfig);
-			
+
 			// Check for success
 			assertTrue(config.getNetInterfaceConfigs().isEmpty());
 		} catch (KuraException e) {
@@ -461,10 +465,10 @@ public class NetworkConfigurationTest {
 			// Prepare network configuration
 			ModemInterfaceAddressConfigImpl interfaceAddressConfig = new ModemInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
-			
+
 			List<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
-			
+
 			ModemInterfaceConfigImpl interfaceConfig = new ModemInterfaceConfigImpl("if1");
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 
@@ -473,20 +477,20 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.MODEM, netConfig);
-			
+
 			// Check for success
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(netConfig);
-			
+
 			interfaceAddressConfig = new ModemInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-			
+
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
 		} catch (KuraException e) {
@@ -502,7 +506,7 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.ADSL, netConfig);
 			fail("NullPointerException was expected");
 		} catch (NullPointerException e) {
@@ -518,10 +522,10 @@ public class NetworkConfigurationTest {
 			// Prepare network configuration
 			MockInterfaceAddressConfigImpl interfaceAddressConfig = new MockInterfaceAddressConfigImpl();
 			interfaceAddressConfig.setNetConfigs(new ArrayList<NetConfig>());
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(interfaceAddressConfig);
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 
@@ -530,9 +534,9 @@ public class NetworkConfigurationTest {
 
 			// Add net config
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
-			
+
 			config.addNetConfig("if1", NetInterfaceType.ETHERNET, netConfig);
-			
+
 			// Check for success
 			assertEquals(1, config.getNetInterfaceConfigs().size());
 			assertEquals(interfaceConfig, config.getNetInterfaceConfigs().get(0));
@@ -544,7 +548,7 @@ public class NetworkConfigurationTest {
 	@Test
 	public void testToStringEmpty() {
 		NetworkConfiguration config = new NetworkConfiguration();
-		
+
 		String expected = "";
 		assertEquals(expected, config.toString());
 	}
@@ -557,11 +561,11 @@ public class NetworkConfigurationTest {
 		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 		addressConfig.setNetConfigs(null);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 		config.addNetInterfaceConfig(interfaceConfig);
-		
+
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false :: Virtual? false"
 				+ " :: Driver: null :: Driver Version: null :: Firmware Version: null :: MTU: 0 :: State: null"
 				+ " :: Type: ETHERNET :: Usb Device: null :: Prefix: 0";
@@ -577,19 +581,19 @@ public class NetworkConfigurationTest {
 		interfaceConfig.setDriverVersion("driverVersion");
 		interfaceConfig.setFirmwareVersion("firmwareVersion");
 		interfaceConfig.setState(NetInterfaceState.ACTIVATED);
-		interfaceConfig.setUsbDevice(new UsbBlockDevice("vendorId", "productId", "manufacturerName",
-				"productName", "usbBusNumber", "usbDevicePath", "deviceNode"));
+		interfaceConfig.setUsbDevice(new UsbBlockDevice("vendorId", "productId", "manufacturerName", "productName",
+				"usbBusNumber", "usbDevicePath", "deviceNode"));
 
 		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
-		
+
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
 		addressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
@@ -600,7 +604,7 @@ public class NetworkConfigurationTest {
 				+ " getUsbBusNumber()=usbBusNumber, getUsbDevicePath()=usbDevicePath,"
 				+ " getUsbPort()=usbBusNumber-usbDevicePath] :: Prefix: 0"
 				+ "\n	IPv4  :: is not configured for STATIC or DHCP";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -609,10 +613,10 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
-		
+
 		try {
 			interfaceConfig.setHardwareAddress(NetworkUtil.macToBytes("11:22:33:44:55:66"));
-			
+
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 			addressConfig.setAddress(IP4Address.parseHostAddress("10.0.0.1"));
@@ -630,7 +634,7 @@ public class NetworkConfigurationTest {
 			properties.put("key", "value");
 			netConfig1.setProperties(properties);
 			netConfigs.add(netConfig2);
-			
+
 			NetConfigIP4 netConfig3 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
 			netConfig3.setAddress(null);
 			netConfigs.add(netConfig3);
@@ -647,7 +651,7 @@ public class NetworkConfigurationTest {
 			netConfig5.setAddress((IP4Address) IP4Address.parseHostAddress("10.0.0.2"));
 			netConfig5.setNetworkPrefixLength((short) 24);
 			netConfig5.setGateway((IP4Address) IP4Address.parseHostAddress("10.0.0.1"));
-			
+
 			List<IP4Address> dnsServers = new ArrayList<IP4Address>();
 			dnsServers.add((IP4Address) IP4Address.parseHostAddress("10.0.1.1"));
 			netConfig5.setDnsServers(dnsServers);
@@ -659,11 +663,11 @@ public class NetworkConfigurationTest {
 			List<String> domains = new ArrayList<String>();
 			domains.add("example.com");
 			netConfig5.setDomains(domains);
-			
+
 			netConfigs.add(netConfig5);
-			
+
 			addressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses.add(addressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 		} catch (UnknownHostException e) {
@@ -671,21 +675,20 @@ public class NetworkConfigurationTest {
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
 				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
 				+ " :: MTU: 0 :: Hardware Address: 11:22:33:44:55:66 :: State: null :: Type: ETHERNET"
 				+ " :: Usb Device: null :: Address: 10.0.0.1 :: Prefix: 0 :: Netmask: 255.255.255.0"
-				+ " :: Broadcast: 10.0.0.255"
-				+ "\n	IPv4  :: is DHCP client :: key: value"
+				+ " :: Broadcast: 10.0.0.255" + "\n	IPv4  :: is DHCP client :: key: value"
 				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
 				+ "\n	IPv4  :: is not configured for STATIC or DHCP"
 				+ "\n	IPv4  :: is STATIC client :: Address: 10.0.0.2 :: Prefix: 24"
 				+ "\n	IPv4  :: is STATIC client :: Address: 10.0.0.2 :: Prefix: 24"
 				+ " :: Gateway: 10.0.0.1 :: DNS : 10.0.1.1 :: WINS Server : 10.0.1.1 :: Domains : example.com";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -694,7 +697,7 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
-		
+
 		try {
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
@@ -710,14 +713,14 @@ public class NetworkConfigurationTest {
 			properties.put("key", "value");
 			netConfig1.setProperties(properties);
 			netConfigs.add(netConfig2);
-			
+
 			NetConfigIP6 netConfig3 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
 			netConfig3.setAddress(null);
 			netConfigs.add(netConfig3);
 
 			NetConfigIP6 netConfig4 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, false);
 			netConfig4.setAddress((IP6Address) IP6Address.parseHostAddress("0:0:0:0:0:0:0:1"));
-			
+
 			List<IP6Address> dnsServers = new ArrayList<IP6Address>();
 			dnsServers.add((IP6Address) IP6Address.parseHostAddress("0:0:0:0:0:0:0:1"));
 			netConfig4.setDnsServers(dnsServers);
@@ -725,11 +728,11 @@ public class NetworkConfigurationTest {
 			List<String> domains = new ArrayList<String>();
 			domains.add("example.com");
 			netConfig4.setDomains(domains);
-			
+
 			netConfigs.add(netConfig4);
-			
+
 			addressConfig.setNetConfigs(netConfigs);
-			
+
 			interfaceAddresses.add(addressConfig);
 			interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
 		} catch (UnknownHostException e) {
@@ -737,18 +740,17 @@ public class NetworkConfigurationTest {
 		} catch (KuraException e) {
 			fail("unexpected exception");
 		}
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
 				+ " :: Virtual? false :: Driver: null :: Driver Version: null :: Firmware Version: null"
 				+ " :: MTU: 0 :: State: null :: Type: ETHERNET :: Usb Device: null :: Prefix: 0"
-				+ "\n	IPv6  :: is DHCP client :: key: value"
-				+ "\n	IPv6  :: is STATIC client"
+				+ "\n	IPv6  :: is DHCP client :: key: value" + "\n	IPv6  :: is STATIC client"
 				+ "\n	IPv6  :: is STATIC client"
 				+ "\n	IPv6  :: is STATIC client :: Address: 0:0:0:0:0:0:0:1 :: DNS : 0:0:0:0:0:0:0:1"
 				+ " :: Domains : example.com";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -757,19 +759,19 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
-		
+
 		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
 		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
-		
+
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 		WifiConfig wifiConfig = new WifiConfig();
 		wifiConfig.setChannels(null);
 		netConfigs.add(wifiConfig);
 		addressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
@@ -778,7 +780,7 @@ public class NetworkConfigurationTest {
 				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false :: Group Ciphers: null"
 				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
 				+ " :: Security: null";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -787,19 +789,19 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
-		
+
 		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
 		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
-		
+
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 		WifiConfig wifiConfig = new WifiConfig();
 		wifiConfig.setChannels(new int[0]);
 		netConfigs.add(wifiConfig);
 		addressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
@@ -808,7 +810,7 @@ public class NetworkConfigurationTest {
 				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false :: Group Ciphers: null"
 				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
 				+ " :: Security: null";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -817,19 +819,19 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		WifiInterfaceConfigImpl interfaceConfig = new WifiInterfaceConfigImpl("if1");
-		
+
 		List<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
 		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
-		
+
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 		WifiConfig wifiConfig = new WifiConfig();
 		wifiConfig.setChannels(new int[] { 1, 2 });
 		netConfigs.add(wifiConfig);
 		addressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
@@ -838,7 +840,7 @@ public class NetworkConfigurationTest {
 				+ "\n	WifiConfig  :: SSID: null :: BgScan: null :: Broadcast: false1,2 :: Group Ciphers: null"
 				+ " :: Hardware Mode: null :: Mode: null :: Pairwise Ciphers: null :: Passkey: null"
 				+ " :: Security: null";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -847,10 +849,10 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		ModemInterfaceConfigImpl interfaceConfig = new ModemInterfaceConfigImpl("if1");
-		
+
 		List<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
 		ModemInterfaceAddressConfigImpl addressConfig = new ModemInterfaceAddressConfigImpl();
-		
+
 		try {
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			ModemConfig modemConfig = new ModemConfig();
@@ -870,10 +872,10 @@ public class NetworkConfigurationTest {
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
 		}
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false"
@@ -882,7 +884,7 @@ public class NetworkConfigurationTest {
 				+ "\n	ModemConfig  :: APN: apn :: Data Compression: 0 :: Dial String: dialString"
 				+ " :: Header Compression: 0 :: Password: password :: PPP number: 0 :: Profile ID: 0"
 				+ " :: Username: username :: Auth Type: AUTO :: IP Address: 10.0.0.2 :: PDP Type: PPP";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -891,32 +893,30 @@ public class NetworkConfigurationTest {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
-		
+
 		List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 
 		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
-		netConfigs.add(new DhcpServerConfigIP4(null, false, null, null, null, 0, 0, (short) 0,
-				null, null, false, null));
+		netConfigs
+				.add(new DhcpServerConfigIP4(null, false, null, null, null, 0, 0, (short) 0, null, null, false, null));
 		netConfigs.add(new FirewallAutoNatConfig());
 		netConfigs.add(null);
 		netConfigs.add(new MockConfig());
-		
+
 		addressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddresses.add(addressConfig);
 		interfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		config.addNetInterfaceConfig(interfaceConfig);
 
 		String expected = "\nname: if1 :: Loopback? false :: Point to Point? false :: Up? false :: Virtual? false"
 				+ " :: Driver: null :: Driver Version: null :: Firmware Version: null :: MTU: 0 :: State: null"
-				+ " :: Type: ETHERNET :: Usb Device: null :: Prefix: 0"
-				+ "\n	DhcpServerConfig "
-				+ "\n	FirewallAutoNatConfig "
-				+ "\n	NULL NETCONFIG PRESENT?!?"
+				+ " :: Type: ETHERNET :: Usb Device: null :: Prefix: 0" + "\n	DhcpServerConfig "
+				+ "\n	FirewallAutoNatConfig " + "\n	NULL NETCONFIG PRESENT?!?"
 				+ "\n	UNKNOWN CONFIG TYPE???: org.eclipse.kura.core.net.MockConfig";
-		
+
 		assertEquals(expected, config.toString());
 	}
 
@@ -927,11 +927,12 @@ public class NetworkConfigurationTest {
 
 		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 		config.addNetInterfaceConfig(interfaceConfig);
-		
-		// Get modified net interface configs (all net interface configs are expected)
-		List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
-				config.getModifiedNetInterfaceConfigs();
-		
+
+		// Get modified net interface configs (all net interface configs are
+		// expected)
+		List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs = config
+				.getModifiedNetInterfaceConfigs();
+
 		assertEquals(1, modifiedNetInterfaceConfigs.size());
 		assertEquals(interfaceConfig, modifiedNetInterfaceConfigs.get(0));
 	}
@@ -941,14 +942,15 @@ public class NetworkConfigurationTest {
 		try {
 			// Prepare configuration
 			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			config.addNetInterfaceConfig(interfaceConfig);
 
-			// Get modified net interface configs (all net interface configs are expected)
-			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
-					config.getModifiedNetInterfaceConfigs();
-			
+			// Get modified net interface configs (all net interface configs are
+			// expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs = config
+					.getModifiedNetInterfaceConfigs();
+
 			assertEquals(1, modifiedNetInterfaceConfigs.size());
 			assertEquals(interfaceConfig, modifiedNetInterfaceConfigs.get(0));
 		} catch (UnknownHostException e) {
@@ -963,18 +965,19 @@ public class NetworkConfigurationTest {
 		try {
 			// Prepare configuration
 			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig1 = new EthernetInterfaceConfigImpl("if1");
 			config.addNetInterfaceConfig(interfaceConfig1);
 
 			List<String> modifiedInterfaceNames = new ArrayList<String>();
 			modifiedInterfaceNames.add("if2");
 			config.setModifiedInterfaceNames(modifiedInterfaceNames);
-			
-			// Get modified net interface configs (all net interface configs are expected)
-			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
-					config.getModifiedNetInterfaceConfigs();
-			
+
+			// Get modified net interface configs (all net interface configs are
+			// expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs = config
+					.getModifiedNetInterfaceConfigs();
+
 			assertEquals(0, modifiedNetInterfaceConfigs.size());
 		} catch (UnknownHostException e) {
 			fail("unexpected exception");
@@ -988,21 +991,22 @@ public class NetworkConfigurationTest {
 		try {
 			// Prepare configuration
 			NetworkConfiguration config = new NetworkConfiguration(new HashMap<String, Object>());
-			
+
 			EthernetInterfaceConfigImpl interfaceConfig1 = new EthernetInterfaceConfigImpl("if1");
 			config.addNetInterfaceConfig(interfaceConfig1);
 
 			EthernetInterfaceConfigImpl interfaceConfig2 = new EthernetInterfaceConfigImpl("if2");
 			config.addNetInterfaceConfig(interfaceConfig2);
-			
+
 			List<String> modifiedInterfaceNames = new ArrayList<String>();
 			modifiedInterfaceNames.add("if2");
 			config.setModifiedInterfaceNames(modifiedInterfaceNames);
-			
-			// Get modified net interface configs (all net interface configs are expected)
-			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs =
-					config.getModifiedNetInterfaceConfigs();
-			
+
+			// Get modified net interface configs (all net interface configs are
+			// expected)
+			List<NetInterfaceConfig<? extends NetInterfaceAddressConfig>> modifiedNetInterfaceConfigs = config
+					.getModifiedNetInterfaceConfigs();
+
 			assertEquals(1, modifiedNetInterfaceConfigs.size());
 			assertEquals(interfaceConfig2, modifiedNetInterfaceConfigs.get(0));
 		} catch (UnknownHostException e) {
@@ -1011,13 +1015,13 @@ public class NetworkConfigurationTest {
 			fail("unexpected exception");
 		}
 	}
-	
+
 	@Test
 	public void testGetNetInterfaceConfig() {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		assertNull(config.getNetInterfaceConfig("if1"));
-		
+
 		EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 		config.addNetInterfaceConfig(interfaceConfig);
 
@@ -1043,7 +1047,7 @@ public class NetworkConfigurationTest {
 		assertEquals(true, TestUtil.getFieldValue(config, "m_recomputeProperties"));
 		Map<String, Object> properties = config.getConfigurationProperties();
 		assertEquals(false, TestUtil.getFieldValue(config, "m_recomputeProperties"));
-		
+
 		Map<String, Object> expected = new HashMap<String, Object>();
 		expected.put("net.interfaces", "if1");
 		expected.put("net.interface.if1.mac", "N/A");
@@ -1059,7 +1063,7 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if1.config.autoconnect", false);
 		expected.put("net.interface.if1.config.mtu", 0);
 		expected.put("net.interface.if1.eth.link.up", false);
-		
+
 		assertMapEquals(expected, properties);
 	}
 
@@ -1067,7 +1071,7 @@ public class NetworkConfigurationTest {
 	public void testIsValidEmpty() {
 		try {
 			NetworkConfiguration config = new NetworkConfiguration();
-			
+
 			assertTrue(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1081,7 +1085,7 @@ public class NetworkConfigurationTest {
 
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			config.addNetInterfaceConfig(interfaceConfig);
-			
+
 			assertTrue(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1100,7 +1104,7 @@ public class NetworkConfigurationTest {
 			interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setMTU(1);
 			config.addNetInterfaceConfig(interfaceConfig);
-			
+
 			assertTrue(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1115,7 +1119,7 @@ public class NetworkConfigurationTest {
 			EthernetInterfaceConfigImpl interfaceConfig = new EthernetInterfaceConfigImpl("if1");
 			interfaceConfig.setMTU(-1);
 			config.addNetInterfaceConfig(interfaceConfig);
-			
+
 			assertFalse(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1130,7 +1134,7 @@ public class NetworkConfigurationTest {
 			MockInterfaceConfigImpl icMock = new MockInterfaceConfigImpl("ifMock");
 			icMock.setType(NetInterfaceType.ADSL);
 			config.addNetInterfaceConfig(icMock);
-			
+
 			assertFalse(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1153,7 +1157,7 @@ public class NetworkConfigurationTest {
 
 			LoopbackInterfaceConfigImpl icLoopback = new LoopbackInterfaceConfigImpl("if4");
 			config.addNetInterfaceConfig(icLoopback);
-			
+
 			assertTrue(config.isValid());
 		} catch (KuraException e) {
 			fail("unexpected exception");
@@ -1170,17 +1174,17 @@ public class NetworkConfigurationTest {
 
 			NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false);
 			netConfig.setDhcp(true);
-			
+
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(netConfig);
-			
+
 			NetInterfaceAddressConfigImpl addressConfig2 = new NetInterfaceAddressConfigImpl();
 			addressConfig2.setNetConfigs(netConfigs);
 
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(addressConfig1);
 			interfaceAddresses.add(addressConfig2);
-			
+
 			EthernetInterfaceConfigImpl icEthernet = new EthernetInterfaceConfigImpl("if1");
 			icEthernet.setNetInterfaceAddresses(interfaceAddresses);
 			config.addNetInterfaceConfig(icEthernet);
@@ -1198,13 +1202,13 @@ public class NetworkConfigurationTest {
 
 			List<NetConfig> netConfigs = new ArrayList<NetConfig>();
 			netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, false));
-			
+
 			NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
 			addressConfig.setNetConfigs(netConfigs);
 
 			List<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
 			interfaceAddresses.add(addressConfig);
-			
+
 			EthernetInterfaceConfigImpl icEthernet = new EthernetInterfaceConfigImpl("if1");
 			icEthernet.setNetInterfaceAddresses(interfaceAddresses);
 			config.addNetInterfaceConfig(icEthernet);
@@ -1215,11 +1219,11 @@ public class NetworkConfigurationTest {
 		}
 	}
 
-    // ---------------------------------------------------------------
-    //
-    // Private Methods
-    //
-    // ---------------------------------------------------------------
+	// ---------------------------------------------------------------
+	//
+	// Private Methods
+	//
+	// ---------------------------------------------------------------
 
 	@Test
 	public void testRecomputeNetworkPropertiesEmpty() throws Throwable {
@@ -1227,7 +1231,7 @@ public class NetworkConfigurationTest {
 
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("net.interfaces", "");
-		
+
 		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
 
 		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
@@ -1237,7 +1241,7 @@ public class NetworkConfigurationTest {
 	@Test
 	public void testRecomputeNetworkPropertiesWithModifiedInterfaces() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
-		
+
 		ArrayList<String> modifiedInterfaceNames = new ArrayList<String>();
 		modifiedInterfaceNames.add("if1");
 		modifiedInterfaceNames.add("if2");
@@ -1246,7 +1250,7 @@ public class NetworkConfigurationTest {
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("modified.interface.names", "if1,if2");
 		expected.put("net.interfaces", "");
-		
+
 		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
 
 		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
@@ -1276,9 +1280,9 @@ public class NetworkConfigurationTest {
 		dnsServers.add(IPAddress.parseHostAddress("10.0.1.1"));
 		dnsServers.add(IPAddress.parseHostAddress("10.0.1.2"));
 		interfaceAddressConfig.setDnsServers(dnsServers);
-		
+
 		ArrayList<NetConfig> netConfigs = new ArrayList<NetConfig>();
-		
+
 		NetConfigIP4 netConfig1 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
 		netConfig1.setDhcp(true);
 		netConfig1.setDnsServers(new ArrayList<IP4Address>());
@@ -1288,28 +1292,21 @@ public class NetworkConfigurationTest {
 		netConfig2.setDhcp(true);
 		netConfigs.add(netConfig2);
 
-		DhcpServerConfigIP4 netConfig3 = new DhcpServerConfigIP4(
-				"if1",
-				false,
+		DhcpServerConfigIP4 netConfig3 = new DhcpServerConfigIP4("if1", false,
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.0"),
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.1"),
-				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"),
-				1,
-				2,
-				(short) 24,
+				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"), 1, 2, (short) 24,
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.10"),
-				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"),
-				true,
-				null);
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"), true, null);
 		netConfigs.add(netConfig3);
 
 		netConfigs.add(new FirewallAutoNatConfig());
-		
+
 		interfaceAddressConfig.setNetConfigs(netConfigs);
 		interfaceAddressConfigs.add(interfaceAddressConfig);
 		netInterfaceConfig2.setNetInterfaceAddresses(interfaceAddressConfigs);
 		config.addNetInterfaceConfig(netInterfaceConfig2);
-		
+
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("net.interface.if1.type", "ETHERNET");
 		expected.put("net.interface.if1.config.name", "if1");
@@ -1319,7 +1316,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
 		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
 		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
-		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
 		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
 		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
 		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
@@ -1339,7 +1337,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
 		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
 		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
-		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
 		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
 		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
 		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
@@ -1365,9 +1364,9 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if2.config.dhcpServer4.rangeEnd", "10.0.0.15");
 		expected.put("net.interface.if2.config.dhcpServer4.passDns", true);
 		expected.put("net.interface.if2.config.nat.enabled", true);
-		
+
 		expected.put("net.interfaces", "if2,if1");
-		
+
 		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
 
 		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
@@ -1381,15 +1380,15 @@ public class NetworkConfigurationTest {
 		WifiInterfaceConfigImpl netInterfaceConfig1 = new WifiInterfaceConfigImpl("if1");
 		netInterfaceConfig1.setCapabilities(null);
 		config.addNetInterfaceConfig(netInterfaceConfig1);
-		
+
 		WifiInterfaceConfigImpl netInterfaceConfig2 = new WifiInterfaceConfigImpl("if2");
 		netInterfaceConfig2.setCapabilities(EnumSet.noneOf(Capability.class));
 		config.addNetInterfaceConfig(netInterfaceConfig2);
-		
+
 		WifiInterfaceConfigImpl netInterfaceConfig3 = new WifiInterfaceConfigImpl("if3");
 		netInterfaceConfig3.setCapabilities(EnumSet.of(Capability.CIPHER_CCMP, Capability.CIPHER_TKIP));
 		config.addNetInterfaceConfig(netInterfaceConfig3);
-		
+
 		ArrayList<WifiInterfaceAddressConfig> interfaceAddressConfigs = new ArrayList<WifiInterfaceAddressConfig>();
 		interfaceAddressConfigs.add(new WifiInterfaceAddressConfigImpl());
 		WifiInterfaceAddressConfigImpl interfaceAddressConfig = new WifiInterfaceAddressConfigImpl();
@@ -1406,7 +1405,7 @@ public class NetworkConfigurationTest {
 		netConfig.setIgnoreSSID(false);
 		netConfigs.add(netConfig);
 		interfaceAddressConfig.setNetConfigs(netConfigs);
-		
+
 		interfaceAddressConfigs.add(interfaceAddressConfig);
 		netInterfaceConfig3.setNetInterfaceAddresses(interfaceAddressConfigs);
 
@@ -1418,7 +1417,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
 		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
 		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
-		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
 		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
 		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
 		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
@@ -1431,7 +1431,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
 		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
 		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
-		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
 		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
 		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
 		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
@@ -1445,7 +1446,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if3.driver", netInterfaceConfig3.getDriver());
 		expected.put("net.interface.if3.driver.version", netInterfaceConfig3.getDriverVersion());
 		expected.put("net.interface.if3.firmware.version", netInterfaceConfig3.getFirmwareVersion());
-		expected.put("net.interface.if3.mac", NetUtil.hardwareAddressToString(netInterfaceConfig3.getHardwareAddress()));
+		expected.put("net.interface.if3.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig3.getHardwareAddress()));
 		expected.put("net.interface.if3.loopback", netInterfaceConfig3.isLoopback());
 		expected.put("net.interface.if3.ptp", netInterfaceConfig3.isPointToPoint());
 		expected.put("net.interface.if3.up", netInterfaceConfig3.isUp());
@@ -1464,9 +1466,9 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if3.config.wifi.adhoc.bgscan", "");
 		expected.put("net.interface.if3.config.wifi.adhoc.pingAccessPoint", false);
 		expected.put("net.interface.if3.config.wifi.adhoc.ignoreSSID", false);
-		
+
 		expected.put("net.interfaces", "if2,if1,if3");
-		
+
 		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
 
 		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
@@ -1484,13 +1486,13 @@ public class NetworkConfigurationTest {
 		config.addNetInterfaceConfig(netInterfaceConfig1);
 
 		ModemInterfaceConfigImpl netInterfaceConfig2 = new ModemInterfaceConfigImpl("if2");
-		netInterfaceConfig2.setRevisionId(new String[] {"rev1", "rev2"});
-		
+		netInterfaceConfig2.setRevisionId(new String[] { "rev1", "rev2" });
+
 		ArrayList<ModemTechnologyType> technologyTypes = new ArrayList<ModemTechnologyType>();
 		technologyTypes.add(ModemTechnologyType.CDMA);
 		technologyTypes.add(ModemTechnologyType.EVDO);
 		netInterfaceConfig2.setTechnologyTypes(technologyTypes);
-		
+
 		ArrayList<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
 		ModemInterfaceAddressConfigImpl interfaceAddressConfig1 = new ModemInterfaceAddressConfigImpl();
 		interfaceAddressConfig1.setConnectionType(null);
@@ -1526,7 +1528,7 @@ public class NetworkConfigurationTest {
 		interfaceAddressConfig2.setNetConfigs(netConfigs);
 		interfaceAddresses.add(interfaceAddressConfig2);
 		netInterfaceConfig2.setNetInterfaceAddresses(interfaceAddresses);
-		
+
 		netInterfaceConfig2.setPowerMode(ModemPowerMode.LOW_POWER);
 		config.addNetInterfaceConfig(netInterfaceConfig2);
 
@@ -1538,7 +1540,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if1.driver", netInterfaceConfig1.getDriver());
 		expected.put("net.interface.if1.driver.version", netInterfaceConfig1.getDriverVersion());
 		expected.put("net.interface.if1.firmware.version", netInterfaceConfig1.getFirmwareVersion());
-		expected.put("net.interface.if1.mac", NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
+		expected.put("net.interface.if1.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig1.getHardwareAddress()));
 		expected.put("net.interface.if1.loopback", netInterfaceConfig1.isLoopback());
 		expected.put("net.interface.if1.ptp", netInterfaceConfig1.isPointToPoint());
 		expected.put("net.interface.if1.up", netInterfaceConfig1.isUp());
@@ -1560,7 +1563,8 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if2.driver", netInterfaceConfig2.getDriver());
 		expected.put("net.interface.if2.driver.version", netInterfaceConfig2.getDriverVersion());
 		expected.put("net.interface.if2.firmware.version", netInterfaceConfig2.getFirmwareVersion());
-		expected.put("net.interface.if2.mac", NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
+		expected.put("net.interface.if2.mac",
+				NetUtil.hardwareAddressToString(netInterfaceConfig2.getHardwareAddress()));
 		expected.put("net.interface.if2.loopback", netInterfaceConfig2.isLoopback());
 		expected.put("net.interface.if2.ptp", netInterfaceConfig2.isPointToPoint());
 		expected.put("net.interface.if2.up", netInterfaceConfig2.isUp());
@@ -1598,7 +1602,7 @@ public class NetworkConfigurationTest {
 		expected.put("net.interface.if2.config.gpsEnabled", true);
 
 		expected.put("net.interfaces", "if2,if1");
-		
+
 		TestUtil.invokePrivate(config, "recomputeNetworkProperties");
 
 		Map<String, Object> properties = (Map<String, Object>) TestUtil.getFieldValue(config, "m_properties");
@@ -1611,12 +1615,12 @@ public class NetworkConfigurationTest {
 
 		WifiConfig wifiConfig = new WifiConfig();
 		wifiConfig.setMode(null);
-		
+
 		String netIfConfigPrefix = "";
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addWifiConfigIP4Properties", wifiConfig, netIfConfigPrefix, properties);
-		
+
 		assertTrue(properties.isEmpty());
 	}
 
@@ -1658,7 +1662,7 @@ public class NetworkConfigurationTest {
 
 		WifiConfig wifiConfig = new WifiConfig();
 		wifiConfig.setMode(WifiMode.ADHOC);
-		wifiConfig.setChannels(new int[] {1, 2, 3});
+		wifiConfig.setChannels(new int[] { 1, 2, 3 });
 		wifiConfig.setSSID("ssid");
 		wifiConfig.setDriver("driver");
 		wifiConfig.setSecurity(WifiSecurity.GROUP_CCMP);
@@ -1694,7 +1698,7 @@ public class NetworkConfigurationTest {
 
 		assertMapEquals(expected, properties);
 	}
-	
+
 	@Test
 	public void testGetWifiConfigMinimal1() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1704,7 +1708,7 @@ public class NetworkConfigurationTest {
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.wifi.adhoc.passphrase", new Password("password"));
 		properties.put("prefix.wifi.adhoc.broadcast", (Boolean) true);
-		
+
 		WifiConfig expected = new WifiConfig();
 		expected.setMode(WifiMode.ADHOC);
 		expected.setSSID("");
@@ -1714,13 +1718,13 @@ public class NetworkConfigurationTest {
 		expected.setHardwareMode("");
 		expected.setIgnoreSSID(false);
 		expected.setBroadcast(true);
-		
-		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
-				config, "getWifiConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
+
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix,
+				WifiMode.ADHOC, properties);
 
 		assertEquals(expected, wifiConfig);
 	}
-	
+
 	@Test
 	public void testGetWifiConfigMinimal2() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1734,7 +1738,7 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.wifi.infra.channel", "");
 		properties.put("prefix.wifi.infra.passphrase", "password");
 		properties.put("prefix.wifi.infra.radioMode", "");
-		
+
 		WifiConfig expected = new WifiConfig();
 		expected.setMode(WifiMode.INFRA);
 		expected.setSSID("");
@@ -1744,13 +1748,13 @@ public class NetworkConfigurationTest {
 		expected.setHardwareMode("");
 		expected.setIgnoreSSID(false);
 		expected.setBgscan(new WifiBgscan(""));
-		
-		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
-				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix,
+				WifiMode.INFRA, properties);
 
 		assertEquals(expected, wifiConfig);
 	}
-	
+
 	@Test
 	public void testGetWifiConfigInvalidSecurityType() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1759,7 +1763,7 @@ public class NetworkConfigurationTest {
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.wifi.infra.securityType", "xyz");
-		
+
 		try {
 			TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
 			fail("exception was expected");
@@ -1767,7 +1771,7 @@ public class NetworkConfigurationTest {
 			assertEquals(KuraErrorCode.INTERNAL_ERROR, e.getCode());
 		}
 	}
-	
+
 	@Test
 	public void testGetWifiConfigInvalidChannel() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1788,10 +1792,10 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.wifi.infra.groupCiphers", "TKIP");
 		properties.put("prefix.wifi.infra.pingAccessPoint", (Boolean) true);
 		properties.put("prefix.wifi.infra.ignoreSSID", (Boolean) true);
-		
+
 		WifiConfig expected = new WifiConfig();
 		expected.setMode(WifiMode.INFRA);
-		expected.setChannels(new int[] {1, 0, 3});
+		expected.setChannels(new int[] { 1, 0, 3 });
 		expected.setSSID("ssid");
 		expected.setDriver("driver");
 		expected.setSecurity(WifiSecurity.GROUP_CCMP);
@@ -1804,13 +1808,13 @@ public class NetworkConfigurationTest {
 		expected.setGroupCiphers(WifiCiphers.TKIP);
 		expected.setPingAccessPoint(true);
 		expected.setIgnoreSSID(true);
-		
-		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
-				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix,
+				WifiMode.INFRA, properties);
 
 		assertEquals(expected, wifiConfig);
 	}
-	
+
 	@Test
 	public void testGetWifiConfigInvalidRadioMode() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1819,7 +1823,7 @@ public class NetworkConfigurationTest {
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.wifi.infra.radioMode", "xyz");
-		
+
 		try {
 			TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
 			fail("exception was expected");
@@ -1827,7 +1831,7 @@ public class NetworkConfigurationTest {
 			assertEquals(KuraErrorCode.INTERNAL_ERROR, e.getCode());
 		}
 	}
-	
+
 	@Test
 	public void testGetWifiConfigFullInfra() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -1848,10 +1852,10 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.wifi.infra.groupCiphers", "TKIP");
 		properties.put("prefix.wifi.infra.pingAccessPoint", (Boolean) true);
 		properties.put("prefix.wifi.infra.ignoreSSID", (Boolean) true);
-		
+
 		WifiConfig expected = new WifiConfig();
 		expected.setMode(WifiMode.INFRA);
-		expected.setChannels(new int[] {1, 2, 3});
+		expected.setChannels(new int[] { 1, 2, 3 });
 		expected.setSSID("ssid");
 		expected.setDriver("driver");
 		expected.setSecurity(WifiSecurity.GROUP_CCMP);
@@ -1864,9 +1868,9 @@ public class NetworkConfigurationTest {
 		expected.setGroupCiphers(WifiCiphers.TKIP);
 		expected.setPingAccessPoint(true);
 		expected.setIgnoreSSID(true);
-		
-		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
-				config, "getWifiConfig", netIfConfigPrefix, WifiMode.INFRA, properties);
+
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix,
+				WifiMode.INFRA, properties);
 
 		assertEquals(expected, wifiConfig);
 	}
@@ -1888,10 +1892,10 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.wifi.adhoc.radioMode", "RADIO_MODE_80211a");
 		properties.put("prefix.wifi.adhoc.pairwiseCiphers", "CCMP");
 		properties.put("prefix.wifi.adhoc.ignoreSSID", (Boolean) true);
-		
+
 		WifiConfig expected = new WifiConfig();
 		expected.setMode(WifiMode.ADHOC);
-		expected.setChannels(new int[] {1, 2, 3});
+		expected.setChannels(new int[] { 1, 2, 3 });
 		expected.setSSID("ssid");
 		expected.setDriver("driver");
 		expected.setSecurity(WifiSecurity.GROUP_CCMP);
@@ -1901,9 +1905,9 @@ public class NetworkConfigurationTest {
 		expected.setRadioMode(WifiRadioMode.RADIO_MODE_80211a);
 		expected.setPairwiseCiphers(WifiCiphers.CCMP);
 		expected.setIgnoreSSID(true);
-		
-		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(
-				config, "getWifiConfig", netIfConfigPrefix, WifiMode.ADHOC, properties);
+
+		WifiConfig wifiConfig = (WifiConfig) TestUtil.invokePrivate(config, "getWifiConfig", netIfConfigPrefix,
+				WifiMode.ADHOC, properties);
 
 		assertEquals(expected, wifiConfig);
 	}
@@ -1933,7 +1937,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.username", "username");
 		expected.put("prefix.enabled", true);
 		expected.put("prefix.gpsEnabled", true);
-		
+
 		ModemConfig modemConfig = new ModemConfig();
 		modemConfig.setApn("apn");
 		modemConfig.setAuthType(null);
@@ -1955,12 +1959,12 @@ public class NetworkConfigurationTest {
 		modemConfig.setUsername("username");
 		modemConfig.setEnabled(true);
 		modemConfig.setGpsEnabled(true);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addModemConfigProperties", modemConfig, prefix, properties);
-		
+
 		assertMapEquals(expected, properties);
 	}
 
@@ -1989,7 +1993,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.username", "username");
 		expected.put("prefix.enabled", true);
 		expected.put("prefix.gpsEnabled", true);
-		
+
 		ModemConfig modemConfig = new ModemConfig();
 		modemConfig.setApn("apn");
 		modemConfig.setAuthType(AuthType.AUTO);
@@ -2011,12 +2015,12 @@ public class NetworkConfigurationTest {
 		modemConfig.setUsername("username");
 		modemConfig.setEnabled(true);
 		modemConfig.setGpsEnabled(true);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addModemConfigProperties", modemConfig, prefix, properties);
-		
+
 		assertMapEquals(expected, properties);
 	}
 
@@ -2047,7 +2051,7 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.username", "username");
 		properties.put("prefix.enabled", null);
 		properties.put("prefix.gpsEnabled", null);
-		
+
 		ModemConfig expected = new ModemConfig();
 		expected.setApn("apn");
 		expected.setAuthType(AuthType.NONE);
@@ -2058,7 +2062,7 @@ public class NetworkConfigurationTest {
 		expected.setUsername("username");
 		expected.setEnabled(false);
 		expected.setGpsEnabled(false);
-		
+
 		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 
 		assertEquals(expected, modemConfig);
@@ -2091,7 +2095,7 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.username", "username");
 		properties.put("prefix.enabled", true);
 		properties.put("prefix.gpsEnabled", true);
-		
+
 		ModemConfig expected = new ModemConfig();
 		expected.setApn("apn");
 		expected.setAuthType(AuthType.NONE);
@@ -2113,7 +2117,7 @@ public class NetworkConfigurationTest {
 		expected.setUsername("username");
 		expected.setEnabled(true);
 		expected.setGpsEnabled(true);
-		
+
 		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 
 		assertEquals(expected, modemConfig);
@@ -2122,7 +2126,7 @@ public class NetworkConfigurationTest {
 	@Test
 	public void testGetModemConfigAll() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
- 
+
 		String prefix = "prefix.";
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
@@ -2146,7 +2150,7 @@ public class NetworkConfigurationTest {
 		properties.put("prefix.username", "username");
 		properties.put("prefix.enabled", true);
 		properties.put("prefix.gpsEnabled", true);
-		
+
 		ModemConfig expected = new ModemConfig();
 		expected.setApn("apn");
 		expected.setAuthType(AuthType.AUTO);
@@ -2168,7 +2172,7 @@ public class NetworkConfigurationTest {
 		expected.setUsername("username");
 		expected.setEnabled(true);
 		expected.setGpsEnabled(true);
-		
+
 		ModemConfig modemConfig = (ModemConfig) TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 
 		assertEquals(expected, modemConfig);
@@ -2177,36 +2181,36 @@ public class NetworkConfigurationTest {
 	@Test(expected = KuraException.class)
 	public void testGetModemConfigInvalidAuthType() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
- 
+
 		String prefix = "prefix.";
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.authType", "xyz");
-		
+
 		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 	}
 
 	@Test(expected = KuraException.class)
 	public void testGetModemConfigInvalidIPAddress() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
- 
+
 		String prefix = "prefix.";
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.ipAddress", "1.2.3.4.5");
-		
+
 		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 	}
 
 	@Test(expected = KuraException.class)
 	public void testGetModemConfigInvalidPdpType() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
- 
+
 		String prefix = "prefix.";
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("prefix.pdpType", "xyz");
-		
+
 		TestUtil.invokePrivate(config, "getModemConfig", prefix, properties);
 	}
 
@@ -2220,7 +2224,7 @@ public class NetworkConfigurationTest {
 		dnsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.0.1"));
 		dnsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.0.2"));
 		netConfig.setDnsServers(dnsServers);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.autoconnect", true);
@@ -2229,7 +2233,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.dhcpClient4.enabled", true);
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
@@ -2244,7 +2248,7 @@ public class NetworkConfigurationTest {
 		netConfig.setNetworkPrefixLength((short) 24);
 		netConfig.setWinsServers(null);
 		netConfig.setDomains(null);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.autoconnect", true);
@@ -2258,20 +2262,20 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.domains", "");
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
-	
+
 	@Test
 	public void testAddNetConfigIP4PropertiesWithoutDhcpFull() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
 
 		NetConfigIP4 netConfig = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
 		netConfig.setDhcp(false);
-		netConfig.setAddress((IP4Address) IPAddress.parseHostAddress("10.0.0.1")); 
-		netConfig.setNetworkPrefixLength((short) 24); 
-		netConfig.setGateway((IP4Address) IPAddress.parseHostAddress("10.0.0.2")); 
+		netConfig.setAddress((IP4Address) IPAddress.parseHostAddress("10.0.0.1"));
+		netConfig.setNetworkPrefixLength((short) 24);
+		netConfig.setGateway((IP4Address) IPAddress.parseHostAddress("10.0.0.2"));
 		ArrayList<IP4Address> winsServers = new ArrayList<IP4Address>();
 		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.1.1"));
 		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.1.2"));
@@ -2280,7 +2284,7 @@ public class NetworkConfigurationTest {
 		domains.add("domain1");
 		domains.add("domain2");
 		netConfig.setDomains(domains);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.autoconnect", true);
@@ -2294,7 +2298,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.domains", "domain1,domain2");
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP4Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
@@ -2305,14 +2309,14 @@ public class NetworkConfigurationTest {
 
 		NetConfigIP6 netConfig = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
 		netConfig.setDhcp(true);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
 		expected.put("prefix.dhcpClient6.enabled", true);
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
@@ -2323,7 +2327,7 @@ public class NetworkConfigurationTest {
 
 		NetConfigIP6 netConfig = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true);
 		netConfig.setDhcp(false);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
@@ -2332,7 +2336,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.domains", "");
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
@@ -2352,7 +2356,7 @@ public class NetworkConfigurationTest {
 		domains.add("domain1");
 		domains.add("domain2");
 		netConfig.setDomains(domains);
-		
+
 		String prefix = "prefix.";
 		HashMap<String, Object> expected = new HashMap<String, Object>();
 		expected.put("prefix.ip6.status", "netIPv6StatusEnabledLAN");
@@ -2362,7 +2366,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.domains", "domain1,domain2");
 
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addNetConfigIP6Properties", netConfig, prefix, properties);
 		assertEquals(expected, properties);
 	}
@@ -2373,20 +2377,13 @@ public class NetworkConfigurationTest {
 
 		ArrayList<IP4Address> dnsServers = new ArrayList<IP4Address>();
 		dnsServers.add((IP4Address) IP4Address.parseHostAddress("10.0.1.1"));
-		
-		DhcpServerConfigIP4 dhcpConfig = new DhcpServerConfigIP4(
-				"if1",
-				false,
+
+		DhcpServerConfigIP4 dhcpConfig = new DhcpServerConfigIP4("if1", false,
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.0"),
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.1"),
-				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"),
-				1,
-				2,
-				(short) 24,
+				(IP4Address) IP4Address.parseHostAddress("255.255.255.0"), 1, 2, (short) 24,
 				(IP4Address) IP4Address.parseHostAddress("10.0.0.10"),
-				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"),
-				true,
-				dnsServers);
+				(IP4Address) IP4Address.parseHostAddress("10.0.0.15"), true, dnsServers);
 
 		String netIfConfigPrefix = "prefix.";
 		HashMap<String, Object> properties = new HashMap<String, Object>();
@@ -2400,7 +2397,7 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.dhcpServer4.passDns", true);
 
 		TestUtil.invokePrivate(config, "addDhcpServerConfig4", dhcpConfig, netIfConfigPrefix, properties);
-		
+
 		assertMapEquals(expected, properties);
 	}
 
@@ -2416,10 +2413,10 @@ public class NetworkConfigurationTest {
 		expected.put("prefix.nat.enabled", true);
 
 		TestUtil.invokePrivate(config, "addFirewallNatConfig", autoNatConfig, netIfConfigPrefix, properties);
-		
+
 		assertMapEquals(expected, properties);
 	}
-	
+
 	@Test
 	public void testAddInterfaceConfigurationNull() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -2427,12 +2424,11 @@ public class NetworkConfigurationTest {
 		String interfaceName = "if1";
 		NetInterfaceType type = null;
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs");
+
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs = (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs");
 		assertTrue(netInterfaceConfigs.isEmpty());
 	}
 
@@ -2446,26 +2442,25 @@ public class NetworkConfigurationTest {
 		properties.put("net.interface.if1.type", "LOOPBACK");
 		properties.put("net.interface.if1.config.autoconnect", true);
 
-        LoopbackInterfaceConfigImpl loopbackInterfaceConfig = new LoopbackInterfaceConfigImpl(interfaceName);
-        List<NetInterfaceAddressConfig> loopbackInterfaceAddressConfigs = new ArrayList<NetInterfaceAddressConfig>();
-        NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
-        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
-        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
-        addressConfig.setNetConfigs(netConfigs);
-        loopbackInterfaceAddressConfigs.add(addressConfig);
-        loopbackInterfaceConfig.setNetInterfaceAddresses(loopbackInterfaceAddressConfigs);
-        loopbackInterfaceConfig.setAutoConnect(true);
-        loopbackInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
-        
-        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
-        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
-        expected.put(interfaceName, loopbackInterfaceConfig);
-        
+		LoopbackInterfaceConfigImpl loopbackInterfaceConfig = new LoopbackInterfaceConfigImpl(interfaceName);
+		List<NetInterfaceAddressConfig> loopbackInterfaceAddressConfigs = new ArrayList<NetInterfaceAddressConfig>();
+		NetInterfaceAddressConfigImpl addressConfig = new NetInterfaceAddressConfigImpl();
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, true));
+		addressConfig.setNetConfigs(netConfigs);
+		loopbackInterfaceAddressConfigs.add(addressConfig);
+		loopbackInterfaceConfig.setNetInterfaceAddresses(loopbackInterfaceAddressConfigs);
+		loopbackInterfaceConfig.setAutoConnect(true);
+		loopbackInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
+
+		HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected = new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+		expected.put(interfaceName, loopbackInterfaceConfig);
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		assertMapEquals(expected,
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs"));
+
+		assertMapEquals(expected, (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs"));
 	}
 
 	@Test
@@ -2477,44 +2472,43 @@ public class NetworkConfigurationTest {
 		HashMap<String, Object> properties = new HashMap<String, Object>();
 		properties.put("net.interface.if1.type", "WIFI");
 		properties.put("net.interface.if1.config.autoconnect", true);
-		
+
 		properties.put("net.interface.if1.config.wifi.master.ssid", "ssid");
 		properties.put("net.interface.if1.config.wifi.master.passphrase", "passphrase");
-		
+
 		properties.put("net.interface.if1.config.wifi.infra.ssid", "ssid");
 		properties.put("net.interface.if1.config.wifi.infra.passphrase", "passphrase");
 
-        WifiInterfaceConfigImpl wifiInterfaceConfig = new WifiInterfaceConfigImpl(interfaceName);
-        List<WifiInterfaceAddressConfig> wifiInterfaceAddressConfigs = new ArrayList<WifiInterfaceAddressConfig>();
-        WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
-        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
-        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
-        
-        WifiConfig wifiConfig1 = new WifiConfig(
-        		WifiMode.MASTER, "ssid", null, WifiSecurity.NONE, "passphrase", "", false, null);
-        wifiConfig1.setDriver("");
-        netConfigs.add(wifiConfig1);
+		WifiInterfaceConfigImpl wifiInterfaceConfig = new WifiInterfaceConfigImpl(interfaceName);
+		List<WifiInterfaceAddressConfig> wifiInterfaceAddressConfigs = new ArrayList<WifiInterfaceAddressConfig>();
+		WifiInterfaceAddressConfigImpl addressConfig = new WifiInterfaceAddressConfigImpl();
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, true));
 
-        WifiConfig wifiConfig2 = new WifiConfig(
-        		WifiMode.INFRA, "ssid", null, WifiSecurity.NONE, "passphrase", "", false, new WifiBgscan(""));
-        wifiConfig2.setDriver("");
-        netConfigs.add(wifiConfig2);
-        
-        addressConfig.setNetConfigs(netConfigs);
-        wifiInterfaceAddressConfigs.add(addressConfig);
-        wifiInterfaceConfig.setNetInterfaceAddresses(wifiInterfaceAddressConfigs);
-        wifiInterfaceConfig.setAutoConnect(true);
-        wifiInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
-        
-        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
-        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
-        expected.put(interfaceName, wifiInterfaceConfig);
-        
+		WifiConfig wifiConfig1 = new WifiConfig(WifiMode.MASTER, "ssid", null, WifiSecurity.NONE, "passphrase", "",
+				false, null);
+		wifiConfig1.setDriver("");
+		netConfigs.add(wifiConfig1);
+
+		WifiConfig wifiConfig2 = new WifiConfig(WifiMode.INFRA, "ssid", null, WifiSecurity.NONE, "passphrase", "",
+				false, new WifiBgscan(""));
+		wifiConfig2.setDriver("");
+		netConfigs.add(wifiConfig2);
+
+		addressConfig.setNetConfigs(netConfigs);
+		wifiInterfaceAddressConfigs.add(addressConfig);
+		wifiInterfaceConfig.setNetInterfaceAddresses(wifiInterfaceAddressConfigs);
+		wifiInterfaceConfig.setAutoConnect(true);
+		wifiInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
+
+		HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected = new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+		expected.put(interfaceName, wifiInterfaceConfig);
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		assertMapEquals(expected,
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs"));
+
+		assertMapEquals(expected, (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs"));
 	}
 
 	@Test
@@ -2527,37 +2521,36 @@ public class NetworkConfigurationTest {
 		properties.put("net.interface.if1.type", "MODEM");
 		properties.put("net.interface.if1.config.autoconnect", true);
 
-        ModemInterfaceConfigImpl modemInterfaceConfig = new ModemInterfaceConfigImpl(interfaceName);
-        List<ModemInterfaceAddressConfig> modemInterfaceAddressConfigs = new ArrayList<ModemInterfaceAddressConfig>();
-        ModemInterfaceAddressConfigImpl addressConfig = new ModemInterfaceAddressConfigImpl();
-        List<NetConfig> netConfigs = new ArrayList<NetConfig>();
-        netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
-        
-        ModemConfig modemConfig = new ModemConfig();
-        modemConfig.setDialString(null);
-        modemConfig.setPdpType(PdpType.UNKNOWN);
-        modemConfig.setApn(null);
-        modemConfig.setUsername(null);
-        modemConfig.setPassword(null);
-        netConfigs.add(modemConfig);
-        
-        addressConfig.setNetConfigs(netConfigs);
-        modemInterfaceAddressConfigs.add(addressConfig);
-        modemInterfaceConfig.setNetInterfaceAddresses(modemInterfaceAddressConfigs);
-        modemInterfaceConfig.setAutoConnect(true);
-        modemInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
-        
-        HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected =
-        		new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
-        expected.put(interfaceName, modemInterfaceConfig);
-        
+		ModemInterfaceConfigImpl modemInterfaceConfig = new ModemInterfaceConfigImpl(interfaceName);
+		List<ModemInterfaceAddressConfig> modemInterfaceAddressConfigs = new ArrayList<ModemInterfaceAddressConfig>();
+		ModemInterfaceAddressConfigImpl addressConfig = new ModemInterfaceAddressConfigImpl();
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, true));
+
+		ModemConfig modemConfig = new ModemConfig();
+		modemConfig.setDialString(null);
+		modemConfig.setPdpType(PdpType.UNKNOWN);
+		modemConfig.setApn(null);
+		modemConfig.setUsername(null);
+		modemConfig.setPassword(null);
+		netConfigs.add(modemConfig);
+
+		addressConfig.setNetConfigs(netConfigs);
+		modemInterfaceAddressConfigs.add(addressConfig);
+		modemInterfaceConfig.setNetInterfaceAddresses(modemInterfaceAddressConfigs);
+		modemInterfaceConfig.setAutoConnect(true);
+		modemInterfaceConfig.setState(NetInterfaceState.DISCONNECTED);
+
+		HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> expected = new HashMap<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>();
+		expected.put(interfaceName, modemInterfaceConfig);
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		assertMapEquals(expected,
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs"));
+
+		assertMapEquals(expected, (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs"));
 	}
-	
+
 	@Test
 	public void testAddInterfaceConfigurationUnknown() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -2565,15 +2558,14 @@ public class NetworkConfigurationTest {
 		String interfaceName = "if1";
 		NetInterfaceType type = NetInterfaceType.UNKNOWN;
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs");
+
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs = (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs");
 		assertTrue(netInterfaceConfigs.isEmpty());
 	}
-	
+
 	@Test
 	public void testAddInterfaceConfigurationUnsupported() throws Throwable {
 		NetworkConfiguration config = new NetworkConfiguration();
@@ -2581,36 +2573,307 @@ public class NetworkConfigurationTest {
 		String interfaceName = "if1";
 		NetInterfaceType type = NetInterfaceType.ADSL;
 		HashMap<String, Object> properties = new HashMap<String, Object>();
-		
+
 		TestUtil.invokePrivate(config, "addInterfaceConfiguration", interfaceName, type, properties);
-		
-		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs =
-				(Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil.getFieldValue(
-						config, "m_netInterfaceConfigs");
+
+		Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>> netInterfaceConfigs = (Map<String, NetInterfaceConfig<? extends NetInterfaceAddressConfig>>) TestUtil
+				.getFieldValue(config, "m_netInterfaceConfigs");
 		assertTrue(netInterfaceConfigs.isEmpty());
 	}
 
-//	@Test
-//	public void testPopulateNetInterfaceConfiguration() throws Throwable {
-//		NetworkConfiguration config = new NetworkConfiguration();
-//
-//
-//		
-//		
-//		
-//		
-//		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration");
-//		
-//		
-//		
-//		
-//		
-//	}
+	@Test
+	public void testPopulateNetInterfaceConfigurationEthernetMinimal() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
 
+		EthernetInterfaceConfigImpl netInterfaceConfig = new EthernetInterfaceConfigImpl("if1");
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "ETHERNET");
+
+		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration", netInterfaceConfig, properties);
+
+		EthernetInterfaceConfigImpl expected = new EthernetInterfaceConfigImpl("if1");
+		expected.setState(NetInterfaceState.DISCONNECTED);
+
+		assertEquals(expected, netInterfaceConfig);
+	}
+
+	@Test
+	public void testPopulateNetInterfaceConfigurationEthernet() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		EthernetInterfaceConfigImpl netInterfaceConfig = new EthernetInterfaceConfigImpl("if1");
+		ArrayList<NetInterfaceAddressConfig> interfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+		interfaceAddresses.add(new NetInterfaceAddressConfigImpl());
+		netInterfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+
+		String macAddress = "11:22:33:44:55:66";
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "ETHERNET");
+		properties.put("net.interface.if1.state", NetInterfaceState.ACTIVATED);
+		properties.put("net.interface.if1.up", true);
+		properties.put("net.interface.if1.config.autoconnect", true);
+		properties.put("net.interface.if1.config.mtu", 42);
+		properties.put("net.interface.if1.driver", "driver");
+		properties.put("net.interface.if1.driver.version", "driverVersion");
+		properties.put("net.interface.if1.firmware.version", "firmwareVersion");
+		properties.put("net.interface.if1.mac", macAddress);
+		properties.put("net.interface.if1.loopback", true);
+		properties.put("net.interface.if1.ptp", true);
+		properties.put("net.interface.if1.virtual", true);
+		properties.put("net.interface.if1.usb.vendor.id", "vendorId");
+		properties.put("net.interface.if1.usb.vendor.name", "vendorName");
+		properties.put("net.interface.if1.usb.product.id", "productId");
+		properties.put("net.interface.if1.usb.product.name", "productName");
+		properties.put("net.interface.if1.usb.busNumber", "busNumber");
+		properties.put("net.interface.if1.usb.devicePath", "devicePath");
+		properties.put("net.interface.if1.eth.link.up", true);
+		properties.put("net.interface.if1.config.ip4.status", "netIPv4StatusEnabledLAN");
+		properties.put("net.interface.if1.config.ip6.status", "netIPv6StatusEnabledLAN");
+		properties.put("net.interface.if1.ip4.address", "10.0.0.10");
+		properties.put("net.interface.if1.ip4.broadcast", "10.0.0.255");
+		properties.put("net.interface.if1.ip4.dnsServers", "10.0.1.1,10.0.1.2");
+		properties.put("net.interface.if1.ip4.gateway", "10.0.0.1");
+		properties.put("net.interface.if1.ip4.netmask", "255.255.255.0");
+		properties.put("net.interface.if1.ip4.prefix", (short) 24);
+		properties.put("net.interface.if1.config.dhcpClient4.enabled", false);
+		properties.put("net.interface.if1.config.ip4.address", "10.0.0.10");
+		properties.put("net.interface.if1.config.ip4.prefix", (short) 24);
+		properties.put("net.interface.if1.config.ip4.gateway", "10.0.0.1");
+		properties.put("net.interface.if1.config.ip4.dnsServers", "10.0.1.1,10.0.1.2");
+		properties.put("net.interface.if1.config.ip4.winsServers", "10.0.2.1,10.0.2.2");
+		properties.put("net.interface.if1.config.ip4.domains", "domain1,domain2");
+		properties.put("net.interface.if1.config.nat.enabled", true);
+		properties.put("net.interface.if1.config.dhcpServer4.enabled", true);
+		properties.put("net.interface.if1.config.dhcpServer4.prefix", (short) 24);
+		properties.put("net.interface.if1.config.dhcpServer4.rangeStart", "10.0.0.100");
+		properties.put("net.interface.if1.config.dhcpServer4.rangeEnd", "10.0.0.110");
+		properties.put("net.interface.if1.config.dhcpServer4.defaultLeaseTime", 100);
+		properties.put("net.interface.if1.config.dhcpServer4.maxLeaseTime", 200);
+		properties.put("net.interface.if1.config.dhcpServer4.passDns", true);
+		properties.put("net.interface.if1.config.dhcpClient6.enabled", false);
+		properties.put("net.interface.if1.config.ip6.address", "2001:db8:0:0:0:ff00:42:8329");
+		properties.put("net.interface.if1.config.ip6.dnsServers", "2001:db8:0:0:0:ff00:42:1000,2001:db8:0:0:0:ff00:42:1001");
+		properties.put("net.interface.if1.config.ip6.domains", "domain1,domain2");
+
+		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration", netInterfaceConfig, properties);
+
+		EthernetInterfaceConfigImpl expected = new EthernetInterfaceConfigImpl("if1");
+		expected.setState(NetInterfaceState.ACTIVATED);
+		expected.setAutoConnect(true);
+		expected.setUp(true);
+		expected.setMTU(42);
+		expected.setDriver("driver");
+		expected.setDriverVersion("driverVersion");
+		expected.setFirmwareVersion("firmwareVersion");
+		expected.setHardwareAddress(NetUtil.hardwareAddressToBytes(macAddress));
+		expected.setLoopback(true);
+		expected.setPointToPoint(true);
+		expected.setVirtual(true);
+		expected.setUsbDevice(new UsbNetDevice("vendorId", "productId", "vendorName", "productName", "busNumber",
+				"devicePath", "if1"));
+		expected.setLinkUp(true);
+
+		ArrayList<NetInterfaceAddressConfig> expectedInterfaceAddresses = new ArrayList<NetInterfaceAddressConfig>();
+		NetInterfaceAddressConfigImpl expectedInterfaceAddress = new NetInterfaceAddressConfigImpl();
+		expectedInterfaceAddress.setAddress(IPAddress.parseHostAddress("10.0.0.10"));
+		expectedInterfaceAddress.setBroadcast(IPAddress.parseHostAddress("10.0.0.255"));
+
+		List<IP4Address> dnsAddresses = new ArrayList<IP4Address>();
+		dnsAddresses.add((IP4Address) IPAddress.parseHostAddress("10.0.1.1"));
+		dnsAddresses.add((IP4Address) IPAddress.parseHostAddress("10.0.1.2"));
+		expectedInterfaceAddress.setDnsServers(dnsAddresses);
+
+		List<IP4Address> winsServers = new ArrayList<IP4Address>();
+		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.2.1"));
+		winsServers.add((IP4Address) IPAddress.parseHostAddress("10.0.2.2"));
+
+		List<String> domains = new ArrayList<String>();
+		domains.add("domain1");
+		domains.add("domain2");
+
+		expectedInterfaceAddress.setGateway(IPAddress.parseHostAddress("10.0.0.1"));
+		expectedInterfaceAddress.setNetmask(IPAddress.parseHostAddress("255.255.255.0"));
+		expectedInterfaceAddress.setNetworkPrefixLength((short) 24);
+
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+		NetConfigIP4 netConfig1 = new NetConfigIP4(NetInterfaceStatus.netIPv4StatusEnabledLAN, true);
+		netConfig1.setAddress((IP4Address) IPAddress.parseHostAddress("10.0.0.10"));
+		netConfig1.setNetworkPrefixLength((short) 24);
+		netConfig1.setGateway((IP4Address) IPAddress.parseHostAddress("10.0.0.1"));
+		netConfig1.setDnsServers(dnsAddresses);
+		netConfig1.setWinsServers(winsServers);
+		netConfig1.setDomains(domains);
+		netConfigs.add(netConfig1);
+
+		FirewallAutoNatConfig netConfig2 = new FirewallAutoNatConfig("if1", "unknown", true);
+		netConfigs.add(netConfig2);
+
+		List<IP4Address> dnServers = new ArrayList<IP4Address>();
+		dnServers.add((IP4Address) IPAddress.parseHostAddress("10.0.0.10"));
+
+		DhcpServerConfigIP4 netConfig3 = new DhcpServerConfigIP4("if1", true,
+				(IP4Address) IPAddress.parseHostAddress("10.0.0.0"),
+				(IP4Address) IPAddress.parseHostAddress("10.0.0.10"),
+				(IP4Address) IPAddress.parseHostAddress("255.255.255.0"), 100, 200, (short) 24,
+				(IP4Address) IPAddress.parseHostAddress("10.0.0.100"),
+				(IP4Address) IPAddress.parseHostAddress("10.0.0.110"), true, dnServers);
+		netConfigs.add(netConfig3);
+
+		NetConfigIP6 netConfig4 = new NetConfigIP6(NetInterfaceStatus.netIPv6StatusEnabledLAN, true, false);
+		netConfig4.setAddress((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:8329"));
+		ArrayList<IP6Address> dnsServers6 = new ArrayList<IP6Address>();
+		dnsServers6.add((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:1000"));
+		dnsServers6.add((IP6Address) IPAddress.parseHostAddress("2001:db8:0:0:0:ff00:42:1001"));
+		netConfig4.setDnsServers(dnsServers6);
+		netConfig4.setDomains(domains);
+		netConfigs.add(netConfig4);
+		
+		expectedInterfaceAddress.setNetConfigs(netConfigs);
+
+		expectedInterfaceAddresses.add(expectedInterfaceAddress);
+		expected.setNetInterfaceAddresses(expectedInterfaceAddresses);
+
+		assertEquals(expected, netInterfaceConfig);
+	}
+
+	@Test
+	public void testPopulateNetInterfaceConfigurationWifi() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		WifiInterfaceConfigImpl netInterfaceConfig = new WifiInterfaceConfigImpl("if1");
+		ArrayList<WifiInterfaceAddressConfig> interfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
+		interfaceAddresses.add(new WifiInterfaceAddressConfigImpl());
+		netInterfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "WIFI");
+		properties.put("net.interface.if1.up", false);
+		properties.put("net.interface.if1.config.autoconnect", true);
+		properties.put("net.interface.if1.wifi.capabilities", "CIPHER_CCMP CIPHER_TKIP");
+		properties.put("net.interface.if1.config.wifi.mode", "ADHOC");
+		properties.put("net.interface.if1.config.wifi.master.passphrase", "password");
+		properties.put("net.interface.if1.config.wifi.infra.passphrase", "password");
+
+		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration", netInterfaceConfig, properties);
+
+		WifiInterfaceConfigImpl expected = new WifiInterfaceConfigImpl("if1");
+		expected.setState(NetInterfaceState.DISCONNECTED);
+		expected.setAutoConnect(true);
+		expected.setUp(false);
+		expected.setCapabilities(EnumSet.of(Capability.CIPHER_CCMP, Capability.CIPHER_TKIP));
+
+		ArrayList<WifiInterfaceAddressConfig> expectedInterfaceAddresses = new ArrayList<WifiInterfaceAddressConfig>();
+		WifiInterfaceAddressConfigImpl expectedInterfaceAddress = new WifiInterfaceAddressConfigImpl();
+		expectedInterfaceAddress.setMode(WifiMode.ADHOC);
+
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, true));
+		
+		WifiConfig netConfig1 = new WifiConfig();
+		netConfig1.setMode(WifiMode.MASTER);
+		netConfig1.setSSID("");
+		netConfig1.setDriver("");
+		netConfig1.setSecurity(WifiSecurity.NONE);
+		netConfig1.setHardwareMode("");
+		netConfig1.setPasskey("password");
+		netConfigs.add(netConfig1);
+		
+		WifiConfig netConfig2 = new WifiConfig();
+		netConfig2.setMode(WifiMode.INFRA);
+		netConfig2.setSSID("");
+		netConfig2.setDriver("");
+		netConfig2.setSecurity(WifiSecurity.NONE);
+		netConfig2.setHardwareMode("");
+		netConfig2.setPasskey("password");
+		netConfig2.setBgscan(new WifiBgscan(""));
+		netConfigs.add(netConfig2);
+
+		expectedInterfaceAddress.setNetConfigs(netConfigs);
+
+		expectedInterfaceAddresses.add(expectedInterfaceAddress);
+		expected.setNetInterfaceAddresses(expectedInterfaceAddresses);
+
+		assertEquals(expected, netInterfaceConfig);
+	}
+
+	@Test
+	public void testPopulateNetInterfaceConfigurationModem() throws Throwable {
+		NetworkConfiguration config = new NetworkConfiguration();
+
+		ModemInterfaceConfigImpl netInterfaceConfig = new ModemInterfaceConfigImpl("if1");
+		ArrayList<ModemInterfaceAddressConfig> interfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
+		interfaceAddresses.add(new ModemInterfaceAddressConfigImpl());
+		netInterfaceConfig.setNetInterfaceAddresses(interfaceAddresses);
+
+		HashMap<String, Object> properties = new HashMap<String, Object>();
+		properties.put("net.interface.if1.type", "MODEM");
+		properties.put("net.interface.if1.up", false);
+		properties.put("net.interface.if1.config.autoconnect", true);
+		properties.put("net.interface.if1.manufacturer", "manufacturer");
+		properties.put("net.interface.if1.model", "model");
+		properties.put("net.interface.if1.revisionId", "rev1,rev2");
+		properties.put("net.interface.if1.serialNum", "serialNumber");
+		properties.put("net.interface.if1.technologyTypes", "CDMA,EVDO");
+		properties.put("net.interface.if1.config.identifier", "modemId");
+		properties.put("net.interface.if1.config.powerMode", "LOW_POWER");
+		properties.put("net.interface.if1.config.pppNum", 100);
+		properties.put("net.interface.if1.config.poweredOn", true);
+		properties.put("net.interface.if1.config.connection.type", "PPP");
+		properties.put("net.interface.if1.config.connection.status", "CONNECTED");
+
+		TestUtil.invokePrivate(config, "populateNetInterfaceConfiguration", netInterfaceConfig, properties);
+
+		ModemInterfaceConfigImpl expected = new ModemInterfaceConfigImpl("if1");
+		expected.setState(NetInterfaceState.DISCONNECTED);
+		expected.setAutoConnect(true);
+		expected.setUp(false);
+		expected.setManufacturer("manufacturer");
+		expected.setModel("model");
+		expected.setRevisionId(new String[] {"rev1", "rev2"});
+		expected.setSerialNumber("serialNumber");
+		List<ModemTechnologyType> technologyTypes = new ArrayList<ModemTechnologyType>();
+		technologyTypes.add(ModemTechnologyType.CDMA);
+		technologyTypes.add(ModemTechnologyType.EVDO);
+		expected.setTechnologyTypes(technologyTypes);
+		expected.setModemIdentifier("modemId");
+		expected.setPowerMode(ModemPowerMode.LOW_POWER);
+		expected.setPppNum(100);
+		expected.setPoweredOn(true);
+		
+		ArrayList<ModemInterfaceAddressConfig> expectedInterfaceAddresses = new ArrayList<ModemInterfaceAddressConfig>();
+		ModemInterfaceAddressConfigImpl expectedInterfaceAddress = new ModemInterfaceAddressConfigImpl();
+		expectedInterfaceAddress.setConnectionType(ModemConnectionType.PPP);
+		expectedInterfaceAddress.setConnectionStatus(ModemConnectionStatus.CONNECTED);
+
+		List<NetConfig> netConfigs = new ArrayList<NetConfig>();
+
+		netConfigs.add(new NetConfigIP4(NetInterfaceStatus.netIPv4StatusDisabled, true));
+		netConfigs.add(new NetConfigIP6(NetInterfaceStatus.netIPv6StatusDisabled, true));
+		
+		ModemConfig netConfig1 = new ModemConfig();
+		netConfig1.setDialString(null);
+		netConfig1.setPdpType(PdpType.UNKNOWN);
+		netConfig1.setApn(null);
+		netConfig1.setUsername(null);
+		netConfig1.setPassword(null);
+		netConfig1.setPppNumber(100);
+		netConfigs.add(netConfig1);
+		
+		expectedInterfaceAddress.setNetConfigs(netConfigs);
+
+		expectedInterfaceAddresses.add(expectedInterfaceAddress);
+		expected.setNetInterfaceAddresses(expectedInterfaceAddresses);
+
+		assertEquals(expected, netInterfaceConfig);
+	}
+	
 	private <T> void assertMapEquals(Map<String, T> expected, Map<String, T> actual) {
 		assertEquals("Size", expected.size(), actual.size());
-		
-		for (Map.Entry<String, T> entry: expected.entrySet()) {
+
+		for (Map.Entry<String, T> entry : expected.entrySet()) {
 			assertEquals("Key: " + entry.getKey(), entry.getValue(), actual.get(entry.getKey()));
 		}
 	}

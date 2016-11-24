@@ -1575,15 +1575,13 @@ public class NetworkConfiguration {
                 String capabilitiesString = (String) props.get(capabilitiesKey);
                 if (capabilitiesString != null) {
                     String[] capabilities = capabilitiesString.split(" ");
-                    if (capabilities != null && capabilities.length > 0) {
-                        EnumSet<Capability> capabilitiesEnum = EnumSet.noneOf(Capability.class);
-                        for (String capability : capabilities) {
-                            if (capability != null && !capability.isEmpty()) {
-                                capabilitiesEnum.add(Capability.valueOf(capability));
-                            }
+                    EnumSet<Capability> capabilitiesEnum = EnumSet.noneOf(Capability.class);
+                    for (String capability : capabilities) {
+                        if (capability != null && !capability.isEmpty()) {
+                            capabilitiesEnum.add(Capability.valueOf(capability));
                         }
-                        ((WifiInterfaceConfigImpl) netInterfaceConfig).setCapabilities(capabilitiesEnum);
                     }
+                    ((WifiInterfaceConfigImpl) netInterfaceConfig).setCapabilities(capabilitiesEnum);
                 }
             }
         } else if (netInterfaceConfig instanceof ModemInterfaceConfigImpl) {
@@ -1750,7 +1748,7 @@ public class NetworkConfiguration {
                 if (props.containsKey(key)) {
                     IPAddress netmask = IPAddress.parseHostAddress((String) props.get(key));
                     s_logger.trace("got {}: {}", key, netmask);
-                    netInterfaceAddressImpl.setBroadcast(netmask);
+                    netInterfaceAddressImpl.setNetmask(netmask);
                 }
 
                 key = "net.interface." + interfaceName + addressType + ".prefix";
@@ -2052,6 +2050,9 @@ public class NetworkConfiguration {
                 dhcp6Enabled = (Boolean) props.get(configDhcp6);
                 s_logger.trace("DHCP 6 enabled? {}", dhcp6Enabled);
             }
+
+            netConfigIP6 = new NetConfigIP6(NetInterfaceStatus.valueOf(configStatus6), autoConnect, dhcp6Enabled);
+            netConfigs.add(netConfigIP6);
 
             if (!dhcp6Enabled) {
                 // ip6
