@@ -43,7 +43,7 @@ public class WifiInterfaceConfigImplTest {
 	}
 
 	@Test
-	public void testWifiInterfaceConfigImplWifiInterfaceOfQextendsWifiInterfaceAddress() {
+	public void testWifiInterfaceConfigImplWifiInterfaceOfQextendsWifiInterfaceEmptyAddress() {
         try {
         	WifiInterfaceConfigImpl config = createConfig(0);
 
@@ -53,6 +53,21 @@ public class WifiInterfaceConfigImplTest {
             fail("unexpected exception");
         }
 	}
+
+    @Test
+    public void testEthernetInterfaceConfigImplWifiInterfaceOfQextendsWifiInterfaceAddressNonEmptyAddress() {
+        try {
+        	WifiInterfaceConfigImpl config = createConfig(2);
+
+            assertEquals("ethInterface", config.getName());
+            assertEquals(2, config.getNetInterfaceAddresses().size());
+            
+            assertEquals(createAddress("10.0.0.1"), config.getNetInterfaceAddresses().get(0));
+            assertEquals(createAddress("10.0.0.2"), config.getNetInterfaceAddresses().get(1));
+        } catch (UnknownHostException e) {
+            fail("unexpected exception");
+        }
+    }
 
     @Test
     public void testToString1() {
