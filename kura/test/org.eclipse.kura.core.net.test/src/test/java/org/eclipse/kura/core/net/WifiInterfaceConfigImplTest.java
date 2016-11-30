@@ -55,11 +55,11 @@ public class WifiInterfaceConfigImplTest {
 	}
 
     @Test
-    public void testEthernetInterfaceConfigImplWifiInterfaceOfQextendsWifiInterfaceAddressNonEmptyAddress() {
+    public void testWifiInterfaceConfigImplWifiInterfaceOfQextendsWifiInterfaceAddressNonEmptyAddress() {
         try {
         	WifiInterfaceConfigImpl config = createConfig(2);
 
-            assertEquals("ethInterface", config.getName());
+            assertEquals("wifiInterface", config.getName());
             assertEquals(2, config.getNetInterfaceAddresses().size());
             
             assertEquals(createAddress("10.0.0.1"), config.getNetInterfaceAddresses().get(0));
