@@ -183,7 +183,7 @@ public class EddystoneScanner implements ConfigurableComponent, BluetoothLeBeaco
                 logger.info("No cloud publisher selected. Cannot publish!");
                 return;
             }
-            
+
             // Publish the beacon data to the beacon's topic
             KuraPayload kp = new KuraPayload();
             kp.setTimestamp(new Date());
@@ -192,7 +192,7 @@ public class EddystoneScanner implements ConfigurableComponent, BluetoothLeBeaco
                 kp.addMetric("namespace", bytesArrayToHexString(eddystone.getNamespace()));
                 kp.addMetric("instance", bytesArrayToHexString(eddystone.getInstance()));
             } else if ("URL".equals(eddystone.getFrameType())) {
-                kp.addMetric("URL", eddystone.getUrl());
+                kp.addMetric("URL", eddystone.getUrlScheme() + eddystone.getUrl());
             }
             kp.addMetric("txpower", (int) eddystone.getTxPower());
             kp.addMetric("rssi", eddystone.getRssi());
